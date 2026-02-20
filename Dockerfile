@@ -29,7 +29,8 @@ COPY --from=builder /build/sw.js          /usr/share/nginx/html/sw.js
 
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
 
-RUN adduser -S -D -H -u 1001 proptrex && \
+RUN apk add --no-cache curl && \
+    adduser -S -D -H -u 1001 proptrex && \
     sed -i 's|/run/nginx.pid|/tmp/nginx.pid|g' /etc/nginx/nginx.conf && \
     chown -R proptrex:0 /var/cache/nginx /var/run /var/log/nginx && \
     chmod -R g+w /var/cache/nginx /var/run /var/log/nginx
@@ -37,7 +38,7 @@ RUN adduser -S -D -H -u 1001 proptrex && \
 USER 1001
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget -qO- http://localhost:8080/health || exit 1
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+  CMD curl -sf http://localhost:8080/health || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
