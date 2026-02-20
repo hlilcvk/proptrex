@@ -39,7 +39,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="react">
 const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 // ═══════════════ CONSTANTS & THEME ═══════════════
@@ -337,7 +337,7 @@ const INDICES=[
 // ═══════════════════════════════════════════════════
 //  MAIN APP
 // ═══════════════════════════════════════════════════
-export default function ProPtrex(){
+function ProPtrex(){
   const [market,setMarket]=useState("crypto");
   const [tab,setTab]=useState("whale_wallets");
   const [tvFilter,setTvFilter]=useState("volume");
