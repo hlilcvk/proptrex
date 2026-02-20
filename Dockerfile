@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════
-#  PROPTREX — Dockerfile v2.1
+#  PROPTREX — Dockerfile v2.2
 #  Web + PWA Mobile App
 #  www.proptrex.com
 # ═══════════════════════════════════════════════════════════
@@ -12,7 +12,7 @@ FROM nginx:1.27-alpine AS production
 
 LABEL org.opencontainers.image.title="PROPTREX Platform"
 LABEL org.opencontainers.image.description="Global Market Intelligence + PWA Mobile App"
-LABEL org.opencontainers.image.version="2.1.0"
+LABEL org.opencontainers.image.version="2.2.0"
 
 RUN rm -rf /usr/share/nginx/html/*
 
@@ -26,11 +26,15 @@ COPY --from=builder /build/app.html       /usr/share/nginx/html/app.html
 COPY --from=builder /build/manifest.json  /usr/share/nginx/html/manifest.json
 COPY --from=builder /build/sw.js          /usr/share/nginx/html/sw.js
 
+# Ana nginx konfigürasyonu (non-root uyumlu)
+COPY config/nginx-main.conf /etc/nginx/nginx.conf
+
+# Sunucu konfigürasyonu
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
 
 RUN adduser -S -D -H -u 1001 proptrex && \
-    chown -R proptrex:0 /var/cache/nginx /var/run /var/log/nginx && \
-    chmod -R g+w /var/cache/nginx /var/run /var/log/nginx
+    chown -R proptrex:0 /var/cache/nginx /var/run /var/log/nginx /run /tmp && \
+    chmod -R g+w /var/cache/nginx /var/run /var/log/nginx /run /tmp
 
 USER 1001
 EXPOSE 8080
