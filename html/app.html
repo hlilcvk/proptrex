@@ -253,7 +253,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--fb);font-size:14px;
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="react">
 const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 // ═══════ CONSTANTS ═══════
@@ -475,7 +475,7 @@ function SigCard({item,src,onAI,delay=0}){
 }
 
 // ═══════ MAIN APP ═══════
-export default function App(){
+function App(){
   const [tab,setTab]=useState("signals");
   const [mkt,setMkt]=useState("crypto");
   const [tvf,setTvf]=useState("volume");
