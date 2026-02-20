@@ -1,8 +1,8 @@
 version: "3.9"
 
 # ═══════════════════════════════════════════════════════════
-#  PROPTREX — docker-compose.yml
-#  Coolify / Traefik / VPS uyumlu
+#  PROPTREX — docker-compose.yml v3.0
+#  Web + Exchange Hub + PWA
 #  www.proptrex.com
 # ═══════════════════════════════════════════════════════════
 
@@ -12,7 +12,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
-    image: proptrex/platform:2.0
+    image: proptrex/platform:3.0
     container_name: proptrex-web
     restart: unless-stopped
 
@@ -41,7 +41,7 @@ services:
 
     labels:
       - "com.proptrex.service=web"
-      - "com.proptrex.version=2.0.0"
+      - "com.proptrex.version=3.0.0"
       # ── Traefik SSL (Coolify otomatik yönetir) ──
       # - "traefik.enable=true"
       # - "traefik.http.routers.proptrex.rule=Host(`proptrex.com`) || Host(`www.proptrex.com`)"

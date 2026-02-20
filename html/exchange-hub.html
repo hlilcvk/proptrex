@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROPTREX — Exchange Hub · Faz 1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#03060b;--bg2:#060c16;--s1:#0a1422;--s2:#0e1a2e;
+  --b1:#12203a;--b2:#1a2e4a;--b3:#223a58;
+  --cyan:#00e5ff;--purple:#a855f7;--green:#00ff88;--red:#ff2d55;
+  --yellow:#fbbf24;--orange:#ff8c00;--blue:#3b82f6;--pink:#ec4899;
+  --txt:#c0d8ee;--txt2:#6a94b8;--txt3:#2e5a7a;--white:#eaf2ff;
+  --head:'Oxanium',sans-serif;--body:'Space Grotesk',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body,#root{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:11px}
+body::before{content:'';position:fixed;inset:0;z-index:9998;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.02) 3px,rgba(0,0,0,.02) 4px)}
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,229,255,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.012) 1px,transparent 1px);
+  background-size:60px 60px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--b3)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{box-shadow:0 0 8px rgba(0,229,255,.15)}50%{box-shadow:0 0 20px rgba(0,229,255,.35)}}
+.fade-in{animation:fadeIn .3s ease both}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
+
+// ═══════════════════════════════════════════════════
+//  EXCHANGE REGISTRY — 19 CEX + Aggregators
+// ═══════════════════════════════════════════════════
+const EXCHANGES = {
+  binance:    {id:"binance",    name:"Binance",    color:"#f3ba2f",icon:"₿", spot:true, futures:true,
+               restSpot:"https://api.binance.com",     restFut:"https://fapi.binance.com",
+               wsSpot:"wss://stream.binance.com:9443/ws", wsFut:"wss://fstream.binance.com/ws",
+               tradeUrl:s=>`https://www.binance.com/tr/trade/${s}_USDT`},
+  bybit:      {id:"bybit",     name:"Bybit",      color:"#f7a600",icon:"By",spot:true, futures:true,
+               restSpot:"https://api.bybit.com",       restFut:"https://api.bybit.com",
+               wsSpot:"wss://stream.bybit.com/v5/public/spot",wsFut:"wss://stream.bybit.com/v5/public/linear",
+               tradeUrl:s=>`https://www.bybit.com/trade/usdt/${s}USDT`},
+  okx:        {id:"okx",       name:"OKX",        color:"#fff",   icon:"O", spot:true, futures:true,
+               restSpot:"https://www.okx.com",         restFut:"https://www.okx.com",
+               wsSpot:"wss://ws.okx.com:8443/ws/v5/public",wsFut:"wss://ws.okx.com:8443/ws/v5/public",
+               tradeUrl:s=>`https://www.okx.com/trade-spot/${s.toLowerCase()}-usdt`},
+  kucoin:     {id:"kucoin",    name:"KuCoin",     color:"#00a37a",icon:"Ku",spot:true, futures:true,
+               restSpot:"https://api.kucoin.com",       restFut:"https://api-futures.kucoin.com",
+               tradeUrl:s=>`https://www.kucoin.com/trade/${s}-USDT`},
+  gateio:     {id:"gateio",    name:"Gate.io",    color:"#2354e6",icon:"G", spot:true, futures:true,
+               restSpot:"https://api.gateio.ws/api/v4", restFut:"https://api.gateio.ws/api/v4",
+               tradeUrl:s=>`https://www.gate.io/trade/${s}_USDT`},
+  mexc:       {id:"mexc",      name:"MEXC",       color:"#2a85ff",icon:"M", spot:true, futures:true,
+               restSpot:"https://api.mexc.com",         restFut:"https://contract.mexc.com",
+               tradeUrl:s=>`https://www.mexc.com/tr-TR/exchange/${s}_USDT`},
+  bitget:     {id:"bitget",    name:"Bitget",     color:"#00f0ff",icon:"Bg",spot:true, futures:true,
+               restSpot:"https://api.bitget.com",       restFut:"https://api.bitget.com",
+               tradeUrl:s=>`https://www.bitget.com/spot/${s}USDT`},
+  coinbase:   {id:"coinbase",  name:"Coinbase",   color:"#0052ff",icon:"C", spot:true, futures:false,
+               restSpot:"https://api.exchange.coinbase.com",
+               tradeUrl:s=>`https://www.coinbase.com/advanced-trade/spot/${s}-USD`},
+  kraken:     {id:"kraken",    name:"Kraken",     color:"#5741d9",icon:"K", spot:true, futures:true,
+               restSpot:"https://api.kraken.com",       restFut:"https://futures.kraken.com/derivatives/api/v3",
+               tradeUrl:s=>`https://www.kraken.com/prices/${s.toLowerCase()}`},
+  deribit:    {id:"deribit",   name:"Deribit",    color:"#4ae",   icon:"D", spot:false,futures:true,
+               restFut:"https://www.deribit.com/api/v2",
+               tradeUrl:s=>`https://www.deribit.com/options/${s}`},
+  crypto_com: {id:"crypto_com",name:"Crypto.com", color:"#002d74",icon:"Cr",spot:true, futures:true,
+               restSpot:"https://api.crypto.com/exchange/v1",
+               tradeUrl:s=>`https://crypto.com/exchange/trade/${s}_USDT`},
+  bitfinex:   {id:"bitfinex",  name:"Bitfinex",   color:"#68e",   icon:"Bf",spot:true, futures:true,
+               restSpot:"https://api-pub.bitfinex.com",
+               tradeUrl:s=>`https://trading.bitfinex.com/t/${s}:USDT`},
+  upbit:      {id:"upbit",     name:"Upbit",      color:"#093687",icon:"Up",spot:true, futures:false,
+               restSpot:"https://api.upbit.com",
+               tradeUrl:s=>`https://upbit.com/exchange?code=CRIX.UPBIT.USDT-${s}`},
+  phemex:     {id:"phemex",    name:"Phemex",     color:"#c1ff72",icon:"Ph",spot:true, futures:true,
+               restSpot:"https://api.phemex.com",       restFut:"https://api.phemex.com",
+               tradeUrl:s=>`https://phemex.com/trade/${s}USDT`},
+  coinex:     {id:"coinex",    name:"CoinEx",     color:"#41c",   icon:"Cx",spot:true, futures:true,
+               restSpot:"https://api.coinex.com",       restFut:"https://api.coinex.com",
+               tradeUrl:s=>`https://www.coinex.com/exchange/${s}-USDT`},
+  gemini:     {id:"gemini",    name:"Gemini",     color:"#00dcfa",icon:"Ge",spot:true, futures:false,
+               restSpot:"https://api.gemini.com",
+               tradeUrl:s=>`https://exchange.gemini.com/trade/${s}USD`},
+  bitstamp:   {id:"bitstamp",  name:"Bitstamp",   color:"#0a0",   icon:"Bs",spot:true, futures:false,
+               restSpot:"https://www.bitstamp.net/api/v2",
+               tradeUrl:s=>`https://www.bitstamp.net/market/tradeview/${s.toLowerCase()}usd/`},
+  htx:        {id:"htx",       name:"HTX",        color:"#0ab4f1",icon:"H", spot:true, futures:true,
+               restSpot:"https://api.htx.com",          restFut:"https://api.hbdm.com",
+               tradeUrl:s=>`https://www.htx.com/tr-tr/trade/${s.toLowerCase()}_usdt/`},
+};
+
+const EX_LIST = Object.values(EXCHANGES);
+const EX_SPOT = EX_LIST.filter(e=>e.spot);
+const EX_FUT  = EX_LIST.filter(e=>e.futures);
+
+// Colors & Utils
+const C = {bg:"#03060b",bg2:"#060c16",s1:"#0a1422",s2:"#0e1a2e",b1:"#12203a",b2:"#1a2e4a",
+  cyan:"#00e5ff",purple:"#a855f7",green:"#00ff88",red:"#ff2d55",yellow:"#fbbf24",
+  orange:"#ff8c00",blue:"#3b82f6",white:"#eaf2ff",txt:"#c0d8ee",txt2:"#6a94b8",muted:"#2e5a7a"};
+
+const fP = n=>{if(!n||isNaN(n))return"—";const v=Math.abs(n);if(v<0.000001)return"$"+Number(n).toExponential(2);if(v<0.01)return"$"+Number(n).toFixed(6);if(v<1)return"$"+Number(n).toFixed(4);if(v<1000)return"$"+Number(n).toFixed(2);return"$"+Number(n).toLocaleString("tr-TR",{maximumFractionDigits:2})};
+const fU = n=>{if(!n)return"—";const v=Math.abs(n);if(v>=1e12)return"$"+(n/1e12).toFixed(2)+"T";if(v>=1e9)return"$"+(n/1e9).toFixed(2)+"B";if(v>=1e6)return"$"+(n/1e6).toFixed(1)+"M";if(v>=1e3)return"$"+(n/1e3).toFixed(0)+"K";return"$"+n.toFixed(2)};
+const fC = n=>n==null||isNaN(n)?"—":(n>0?"+":"")+Number(n).toFixed(2)+"%";
+const pC = n=>(n??0)>0?C.green:(n??0)<0?C.red:C.muted;
+
+// ═══════════════════════════════════════════════════
+//  DATA FETCHERS — Real API calls
+// ═══════════════════════════════════════════════════
+
+// TradingView Scanner (proven from existing codebase)
+const TV_URL = "https://scanner.tradingview.com/crypto/scan";
+const COIN_URL = "https://scanner.tradingview.com/coin/scan";
+
+const TV_FILTERS = {
+  volume:   [{left:"volume",operation:"greater",right:500000}],
+  gainers:  [{left:"change",operation:"greater",right:5},{left:"volume",operation:"greater",right:100000}],
+  oversold: [{left:"RSI",operation:"less",right:35},{left:"volume",operation:"greater",right:100000}],
+  momentum: [{left:"Recommend.All",operation:"greater",right:0.3},{left:"volume",operation:"greater",right:500000}],
+  whale:    [{left:"volume",operation:"greater",right:5000000},{left:"change",operation:"in_range",right:[0,20]}],
+  dip:      [{left:"change",operation:"less",right:-5},{left:"RSI",operation:"in_range",right:[25,45]}],
+  new_high: [{left:"change",operation:"greater",right:10},{left:"RSI",operation:"less",right:80}],
+};
+
+const buildTVPayload = (filter="volume",limit=200)=>({
+  filter: TV_FILTERS[filter]||TV_FILTERS.volume,
+  options:{lang:"tr"},markets:["crypto"],symbols:{query:{types:[]},tickers:[]},
+  columns:["name","description","close","change","change_abs","volume","market_cap_calc",
+    "Recommend.All","RSI","RSI[1]","MACD.macd","MACD.signal","EMA20","EMA50","EMA200",
+    "Volatility.D","average_volume_10d_calc","exchange","currency_code","type"],
+  sort:{sortBy:"volume",sortOrder:"desc"},range:[0,limit],
+});
+
+const buildCoinPayload = (limit=200)=>({
+  filter:[{left:"24h_vol_usd",operation:"greater",right:100000}],
+  options:{lang:"tr"},markets:["coin"],symbols:{query:{types:[]},tickers:[]},
+  columns:["name","description","price_usd","24h_vol_usd","market_cap_usd",
+    "1h_change_percentage","24h_change_percentage","7d_change_percentage",
+    "fully_diluted_valuation","total_supply","circulating_supply","exchanges_list",
+    "blockchain_list","high_24h","low_24h","ath_usd","atl_usd"],
+  sort:{sortBy:"24h_vol_usd",sortOrder:"desc"},range:[0,limit],
+});
+
+// Analyze score (from existing codebase, enhanced)
+function analyzeToken(t, src="TV") {
+  if (src === "TV") {
+    const rsi=t.RSI??50,ch=t.change??0,rec=t.Recommend_All??0;
+    const vol=t.volume??0,avg=t.average_volume_10d_calc??1;
+    const ema20=t.EMA20??t.close,ema50=t.EMA50??t.close,price=t.close??0;
+    let score=0; const signals=[]; const risks=[];
+    const vr=avg>0?vol/avg:0;
+    if(vr>5){score+=35;signals.push(`🚀 Hacim x${vr.toFixed(1)}`)}
+    else if(vr>2.5){score+=18;signals.push(`📈 Hacim x${vr.toFixed(1)}`)}
+    if(rsi<30){score+=30;signals.push(`⚡ Aşırı satım RSI:${rsi.toFixed(0)}`)}
+    else if(rsi<40){score+=15;signals.push(`📉 RSI:${rsi.toFixed(0)}`)}
+    else if(rsi>70){risks.push(`⚠️ Aşırı alım RSI:${rsi.toFixed(0)}`);score-=10}
+    if(price>ema20&&ema20>ema50){score+=20;signals.push("🟢 EMA yükselen")}
+    if(rec>0.5){score+=25;signals.push(`📊 TV güçlü AL`)}
+    else if(rec>0.2){score+=12;signals.push(`📊 TV AL`)}
+    else if(rec<-0.3){risks.push("📊 TV SAT");score-=15}
+    if(ch>5&&ch<25){score+=15;signals.push(`⬆️ +${ch.toFixed(1)}%`)}
+    if(vr>3&&Math.abs(ch)<5){score+=25;signals.push("🐋 Sessiz birikim")}
+    const level=score>=70?"GÜÇLÜ AL":score>=45?"AL":score>=25?"İZLE":"BEKLE";
+    return{score:Math.max(0,Math.min(score,100)),level,signals,risks};
+  } else {
+    const ch1=t["1h_change_percentage"]??0,ch24=t["24h_change_percentage"]??0,ch7=t["7d_change_percentage"]??0;
+    const vol=t["24h_vol_usd"]??0,mc=t["market_cap_usd"]??0;
+    const price=t["price_usd"]??0,h24=t["high_24h"]??price,l24=t["low_24h"]??price;
+    let score=0;const signals=[];
+    if(ch1>2&&ch24>5){score+=30;signals.push(`🔥 Momentum: 1s+${ch1.toFixed(1)}%`)}
+    if(ch7<-20&&ch24>3){score+=35;signals.push("🎯 Haftalık dipten dönüş")}
+    if(ch24<-10&&ch1>0){score+=25;signals.push("🔄 Günlük dip geri alım")}
+    if(mc>0&&vol/mc>0.1){score+=20;signals.push(`💰 Vol/MC: ${(vol/mc*100).toFixed(0)}%`)}
+    if(h24>0&&price/h24>0.95&&ch24>5){score+=20;signals.push("🚀 24s yüksek kırılım")}
+    if(l24>0&&price/l24<1.05&&ch1>0){score+=25;signals.push("⚡ 24s dip dönüşü")}
+    const level=score>=65?"GÜÇLÜ AL":score>=40?"AL":score>=20?"İZLE":"BEKLE";
+    return{score:Math.max(0,Math.min(score,100)),level,signals,risks:[]};
+  }
+}
+
+// Detect exchange from TV symbol name
+function detectExchange(name, exchange) {
+  const ex = (exchange||"").toUpperCase();
+  const n = (name||"").toUpperCase();
+  for (const e of EX_LIST) {
+    if (ex.includes(e.name.toUpperCase()) || n.includes(e.name.toUpperCase())) return e.id;
+  }
+  if (ex.includes("BINANCE")||n.startsWith("BINANCE:")) return "binance";
+  if (ex.includes("BYBIT")) return "bybit";
+  if (ex.includes("OKX")) return "okx";
+  if (ex.includes("KUCOIN")) return "kucoin";
+  if (ex.includes("GATE")) return "gateio";
+  if (ex.includes("MEXC")) return "mexc";
+  if (ex.includes("BITGET")) return "bitget";
+  if (ex.includes("COINBASE")) return "coinbase";
+  if (ex.includes("KRAKEN")) return "kraken";
+  if (ex.includes("BITFINEX")) return "bitfinex";
+  if (ex.includes("HTX")||ex.includes("HUOBI")) return "htx";
+  if (ex.includes("UPBIT")) return "upbit";
+  if (ex.includes("BITSTAMP")) return "bitstamp";
+  if (ex.includes("GEMINI")) return "gemini";
+  return "binance"; // default
+}
+
+// ═══════════════════════════════════════════════════
+//  SUB-COMPONENTS
+// ═══════════════════════════════════════════════════
+
+// Exchange badge
+const ExBadge = ({exId, size="sm"}) => {
+  const ex = EXCHANGES[exId];
+  if(!ex) return null;
+  const s = size==="sm" ? {fontSize:"7px",padding:"1px 5px"} : {fontSize:"9px",padding:"2px 8px"};
+  return <span style={{...s,background:ex.color+"18",border:`1px solid ${ex.color}44`,color:ex.color,
+    borderRadius:"3px",fontWeight:"bold",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:"2px",
+    fontFamily:"var(--mono)"}}>{ex.icon} {ex.name}</span>;
+};
+
+// Score bar
+const ScoreBar = ({score,level}) => {
+  const col = level==="GÜÇLÜ AL"?C.green:level==="AL"?"#7fff00":level==="İZLE"?C.yellow:C.muted;
+  return <span style={{display:"inline-flex",alignItems:"center",gap:"4px"}}>
+    <span style={{display:"inline-block",width:"48px",height:"4px",background:"#091c2c",borderRadius:"2px",overflow:"hidden"}}>
+      <span style={{display:"block",height:"100%",width:score+"%",background:col,borderRadius:"2px",transition:"width .5s"}}/>
+    </span>
+    <span style={{color:col,fontSize:"8px",fontWeight:"bold",minWidth:"16px"}}>{score}</span>
+  </span>;
+};
+
+// Level pill
+const LevelPill = ({level}) => {
+  const m={"GÜÇLÜ AL":C.green,"AL":"#7fff00","İZLE":C.yellow,"SAT":C.red,"BEKLE":C.muted};
+  const col=m[level]||C.muted;
+  return <span style={{background:col+"18",border:`1px solid ${col}44`,color:col,borderRadius:"3px",
+    padding:"1px 8px",fontSize:"8px",fontWeight:"bold",letterSpacing:".5px",whiteSpace:"nowrap"}}>{level||"—"}</span>;
+};
+
+// Market type pill
+const TypePill = ({type}) => {
+  const isSpot = type==="SPOT";
+  const col = isSpot ? C.cyan : C.purple;
+  return <span style={{background:col+"15",border:`1px solid ${col}33`,color:col,borderRadius:"2px",
+    padding:"0 5px",fontSize:"7px",fontWeight:"bold",letterSpacing:"1px"}}>{type}</span>;
+};
+
+// Mini sparkline (simulated)
+const Spark = ({change}) => {
+  const up = (change||0) > 0;
+  const col = up ? C.green : C.red;
+  const pts = useMemo(()=>{
+    let p = []; let v = 50;
+    for(let i=0;i<20;i++){v+=((Math.random()-.5)*8)+(up?0.3:-0.3);p.push(Math.max(10,Math.min(90,v)))}
+    return p.map((y,i)=>`${i*(40/19)},${100-y}`).join(" ");
+  },[]);
+  return <svg width="40" height="16" viewBox="0 0 40 100" style={{opacity:.7}}>
+    <polyline points={pts} fill="none" stroke={col} strokeWidth="4"/>
+  </svg>;
+};
+
+// ═══════════════════════════════════════════════════
+//  FILTER PANEL COMPONENT
+// ═══════════════════════════════════════════════════
+const FilterPanel = ({filters, setFilters, onClose}) => {
+  const [local, setLocal] = useState({...filters});
+
+  const toggleEx = id => {
+    const s = new Set(local.exchanges);
+    s.has(id) ? s.delete(id) : s.add(id);
+    setLocal({...local, exchanges: s});
+  };
+
+  const apply = () => { setFilters({...local}); onClose(); };
+  const reset = () => {
+    const def = {marketType:"ALL",exchanges:new Set(EX_LIST.map(e=>e.id)),signalFilter:"ALL",
+      tvFilter:"volume",minVol:"",maxVol:"",minChange:"",maxChange:"",minRsi:"",maxRsi:"",search:""};
+    setLocal(def); setFilters(def); onClose();
+  };
+
+  const S = {
+    overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"},
+    modal:{background:"#080e1a",border:"1px solid #1a2e4a",borderRadius:"8px",width:"620px",maxWidth:"95vw",maxHeight:"85vh",overflow:"auto",padding:"20px"},
+    h:{fontFamily:"var(--head)",fontSize:"14px",fontWeight:800,color:C.cyan,marginBottom:"16px",letterSpacing:"1px"},
+    label:{fontSize:"9px",color:C.txt2,fontWeight:700,letterSpacing:"1px",marginBottom:"6px",display:"block",textTransform:"uppercase"},
+    row:{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"14px"},
+    chip:(active)=>({padding:"4px 10px",fontSize:"9px",fontWeight:700,border:`1px solid ${active?C.cyan+"88":"#1a2e4a"}`,
+      background:active?C.cyan+"18":"transparent",color:active?C.cyan:C.txt2,borderRadius:"4px",cursor:"pointer",transition:"all .15s"}),
+    input:{background:"#060c16",border:"1px solid #1a2e4a",color:C.txt,borderRadius:"4px",padding:"5px 8px",
+      fontSize:"10px",fontFamily:"var(--mono)",width:"90px",outline:"none"},
+    btn:(primary)=>({padding:"8px 20px",fontSize:"10px",fontWeight:800,fontFamily:"var(--head)",letterSpacing:"1px",
+      border:primary?"none":"1px solid #1a2e4a",background:primary?C.cyan:"transparent",
+      color:primary?"#000":C.txt2,borderRadius:"4px",cursor:"pointer"}),
+  };
+
+  return <div style={S.overlay} onClick={onClose}>
+    <div style={S.modal} onClick={e=>e.stopPropagation()}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
+        <span style={S.h}>⚡ GELİŞMİŞ FİLTRELER</span>
+        <span style={{cursor:"pointer",color:C.txt2,fontSize:"18px"}} onClick={onClose}>✕</span>
+      </div>
+
+      {/* Market Type */}
+      <label style={S.label}>Piyasa Tipi</label>
+      <div style={S.row}>
+        {[["ALL","Hepsi"],["SPOT","Spot"],["FUTURES","Futures"]].map(([v,l])=>
+          <span key={v} style={S.chip(local.marketType===v)} onClick={()=>setLocal({...local,marketType:v})}>{l}</span>)}
+      </div>
+
+      {/* Exchanges */}
+      <label style={S.label}>Borsalar ({local.exchanges.size}/{EX_LIST.length})</label>
+      <div style={{...S.row,marginBottom:"4px"}}>
+        <span style={{...S.chip(local.exchanges.size===EX_LIST.length),fontSize:"8px"}}
+          onClick={()=>setLocal({...local,exchanges:new Set(EX_LIST.map(e=>e.id))})}>Tümü</span>
+        <span style={{...S.chip(local.exchanges.size===0),fontSize:"8px"}}
+          onClick={()=>setLocal({...local,exchanges:new Set()})}>Hiçbiri</span>
+      </div>
+      <div style={{...S.row,maxHeight:"80px",overflow:"auto"}}>
+        {EX_LIST.map(ex=>{
+          const active = local.exchanges.has(ex.id);
+          return <span key={ex.id} style={{...S.chip(active),display:"inline-flex",alignItems:"center",gap:"3px"}}
+            onClick={()=>toggleEx(ex.id)}>
+            <span style={{width:"6px",height:"6px",borderRadius:"50%",background:ex.color,flexShrink:0}}/>
+            {ex.name}
+          </span>;
+        })}
+      </div>
+
+      {/* Signal filter */}
+      <label style={S.label}>Sinyal Filtresi</label>
+      <div style={S.row}>
+        {[["ALL","Hepsi"],["GÜÇLÜ AL","🟢 Güçlü Al"],["AL","🟡 Al"],["İZLE","⚡ İzle"],["BEKLE","⬜ Bekle"]].map(([v,l])=>
+          <span key={v} style={S.chip(local.signalFilter===v)} onClick={()=>setLocal({...local,signalFilter:v})}>{l}</span>)}
+      </div>
+
+      {/* TV Pre-filter */}
+      <label style={S.label}>Veri Filtresi (TradingView Scanner)</label>
+      <div style={S.row}>
+        {[["volume","📊 Hacim"],["gainers","📈 Yükselenler"],["oversold","⚡ Aşırı Satım"],["momentum","🔥 Momentum"],
+          ["whale","🐋 Balina"],["dip","🎯 Dip"],["new_high","🚀 Yeni Yüksek"]].map(([v,l])=>
+          <span key={v} style={S.chip(local.tvFilter===v)} onClick={()=>setLocal({...local,tvFilter:v})}>{l}</span>)}
+      </div>
+
+      {/* Range filters */}
+      <label style={S.label}>Aralık Filtreleri</label>
+      <div style={{display:"flex",gap:"12px",flexWrap:"wrap",marginBottom:"14px"}}>
+        <div>
+          <span style={{fontSize:"8px",color:C.txt2}}>Hacim ($)</span>
+          <div style={{display:"flex",gap:"4px",marginTop:"3px"}}>
+            <input style={S.input} placeholder="Min" value={local.minVol} onChange={e=>setLocal({...local,minVol:e.target.value})}/>
+            <span style={{color:C.txt3,alignSelf:"center"}}>—</span>
+            <input style={S.input} placeholder="Max" value={local.maxVol} onChange={e=>setLocal({...local,maxVol:e.target.value})}/>
+          </div>
+        </div>
+        <div>
+          <span style={{fontSize:"8px",color:C.txt2}}>Değişim (%)</span>
+          <div style={{display:"flex",gap:"4px",marginTop:"3px"}}>
+            <input style={S.input} placeholder="Min" value={local.minChange} onChange={e=>setLocal({...local,minChange:e.target.value})}/>
+            <span style={{color:C.txt3,alignSelf:"center"}}>—</span>
+            <input style={S.input} placeholder="Max" value={local.maxChange} onChange={e=>setLocal({...local,maxChange:e.target.value})}/>
+          </div>
+        </div>
+        <div>
+          <span style={{fontSize:"8px",color:C.txt2}}>RSI</span>
+          <div style={{display:"flex",gap:"4px",marginTop:"3px"}}>
+            <input style={S.input} placeholder="Min" value={local.minRsi} onChange={e=>setLocal({...local,minRsi:e.target.value})}/>
+            <span style={{color:C.txt3,alignSelf:"center"}}>—</span>
+            <input style={S.input} placeholder="Max" value={local.maxRsi} onChange={e=>setLocal({...local,maxRsi:e.target.value})}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div style={{display:"flex",gap:"10px",justifyContent:"flex-end",paddingTop:"8px",borderTop:"1px solid #12203a"}}>
+        <button style={S.btn(false)} onClick={reset}>🔄 Sıfırla</button>
+        <button style={S.btn(true)} onClick={apply}>✓ Uygula</button>
+      </div>
+    </div>
+  </div>;
+};
+
+// ═══════════════════════════════════════════════════
+//  MAIN APPLICATION
+// ═══════════════════════════════════════════════════
+function App() {
+  // State
+  const [tab, setTab] = useState("spot"); // spot | futures | overview | alerts
+  const [tvData, setTvData] = useState([]);
+  const [coinData, setCoinData] = useState([]);
+  const [loading, setLoading] = useState({tv:false,coin:false});
+  const [lastScan, setLastScan] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [search, setSearch] = useState("");
+  const [sortCol, setSortCol] = useState("score");
+  const [sortDir, setSortDir] = useState("desc");
+  const [clock, setClock] = useState("");
+  const [ticker, setTicker] = useState(0);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  const seenAlerts = useRef(new Set());
+
+  const [filters, setFilters] = useState({
+    marketType: "ALL",
+    exchanges: new Set(EX_LIST.map(e=>e.id)),
+    signalFilter: "ALL",
+    tvFilter: "volume",
+    minVol:"", maxVol:"", minChange:"", maxChange:"", minRsi:"", maxRsi:"",
+    search: "",
+  });
+
+  // Clock
+  useEffect(()=>{
+    const t=setInterval(()=>{const now=new Date();setClock(now.toUTCString().match(/(\d\d:\d\d:\d\d)/)?.[1]||"");},1000);
+    return()=>clearInterval(t);
+  },[]);
+
+  // Fetch TV data
+  const fetchTV = useCallback(async()=>{
+    setLoading(l=>({...l,tv:true}));
+    try {
+      const res = await fetch(TV_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(buildTVPayload(filters.tvFilter))});
+      if(!res.ok) throw new Error(res.status);
+      const json = await res.json();
+      const cols=["name","description","close","change","change_abs","volume","market_cap_calc",
+        "Recommend_All","RSI","RSI_1","MACD_macd","MACD_signal","EMA20","EMA50","EMA200",
+        "Volatility_D","average_volume_10d_calc","exchange","currency_code","type"];
+      const rows = (json.data||[]).map(item=>{
+        const d=item.d||[]; const obj={};
+        cols.forEach((c,i)=>obj[c]=d[i]);
+        const analysis = analyzeToken(obj,"TV");
+        const exId = detectExchange(obj.name, obj.exchange);
+        const sym = (obj.name||"").split(":").pop()||obj.name||"";
+        return {...obj, _analysis:analysis, _exId:exId, _sym:sym, _src:"TV", _id:item.s,
+          _marketType: obj.type==="futures"||obj.name?.includes("PERP")?"FUTURES":"SPOT"};
+      });
+      setTvData(rows);
+      // Alerts
+      rows.filter(t=>t._analysis.level==="GÜÇLÜ AL").forEach(t=>{
+        const key=`tv-${t._id}-${Math.floor(Date.now()/120000)}`;
+        if(!seenAlerts.current.has(key)){
+          seenAlerts.current.add(key);
+          setAlerts(prev=>[{id:key,ts:new Date(),name:t._sym,desc:t.description,
+            level:t._analysis.level,score:t._analysis.score,signals:t._analysis.signals,
+            price:t.close,change:t.change,exId:t._exId},...prev].slice(0,100));
+        }
+      });
+    } catch(e){console.error("TV:",e)}
+    setLoading(l=>({...l,tv:false}));
+    setLastScan(new Date());
+  },[filters.tvFilter]);
+
+  // Fetch Coin data
+  const fetchCoin = useCallback(async()=>{
+    setLoading(l=>({...l,coin:true}));
+    try {
+      const res = await fetch(COIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(buildCoinPayload())});
+      if(!res.ok) throw new Error(res.status);
+      const json = await res.json();
+      const cols=["name","description","price_usd","24h_vol_usd","market_cap_usd",
+        "1h_change_percentage","24h_change_percentage","7d_change_percentage",
+        "fully_diluted_valuation","total_supply","circulating_supply","exchanges_list",
+        "blockchain_list","high_24h","low_24h","ath_usd","atl_usd"];
+      const rows = (json.data||[]).map(item=>{
+        const d=item.d||[]; const obj={};
+        cols.forEach((c,i)=>obj[c]=d[i]);
+        const analysis = analyzeToken(obj,"COIN");
+        return {...obj, _analysis:analysis, _src:"COIN", _id:item.s, _sym:obj.name,
+          _exId:"binance", _marketType:"SPOT"};
+      });
+      setCoinData(rows);
+    } catch(e){console.error("COIN:",e)}
+    setLoading(l=>({...l,coin:false}));
+  },[]);
+
+  // Auto-fetch
+  useEffect(()=>{fetchTV();fetchCoin();const t=setInterval(()=>{fetchTV();fetchCoin();},12000);return()=>clearInterval(t);},[fetchTV,fetchCoin]);
+  useEffect(()=>{const t=setInterval(()=>setTicker(c=>c+1),1000);return()=>clearInterval(t);},[]);
+
+  // Merge & Filter data
+  const allData = useMemo(()=>{
+    let data = [...tvData, ...coinData];
+
+    // De-duplicate by symbol (prefer TV data which has exchange info)
+    const seen = new Map();
+    data.forEach(d=>{
+      const key = (d._sym||"").toUpperCase();
+      if(!seen.has(key) || d._src==="TV") seen.set(key, d);
+    });
+    data = Array.from(seen.values());
+
+    // Apply filters
+    if(filters.marketType!=="ALL") data = data.filter(d=>d._marketType===filters.marketType);
+    if(filters.exchanges.size < EX_LIST.length) data = data.filter(d=>filters.exchanges.has(d._exId));
+    if(filters.signalFilter!=="ALL") data = data.filter(d=>d._analysis.level===filters.signalFilter);
+    if(search) {
+      const s = search.toUpperCase();
+      data = data.filter(d=>(d._sym||"").toUpperCase().includes(s)||(d.description||"").toUpperCase().includes(s));
+    }
+    // Range filters
+    if(filters.minVol) data = data.filter(d=>(d.volume||d["24h_vol_usd"]||0)>=Number(filters.minVol));
+    if(filters.maxVol) data = data.filter(d=>(d.volume||d["24h_vol_usd"]||0)<=Number(filters.maxVol));
+    if(filters.minChange) data = data.filter(d=>(d.change||d["24h_change_percentage"]||0)>=Number(filters.minChange));
+    if(filters.maxChange) data = data.filter(d=>(d.change||d["24h_change_percentage"]||0)<=Number(filters.maxChange));
+    if(filters.minRsi) data = data.filter(d=>(d.RSI||50)>=Number(filters.minRsi));
+    if(filters.maxRsi) data = data.filter(d=>(d.RSI||50)<=Number(filters.maxRsi));
+
+    // Sort
+    data.sort((a,b)=>{
+      let va,vb;
+      switch(sortCol){
+        case "score": va=a._analysis.score; vb=b._analysis.score; break;
+        case "name": va=(a._sym||""); vb=(b._sym||""); return sortDir==="asc"?va.localeCompare(vb):vb.localeCompare(va);
+        case "price": va=a.close||a.price_usd||0; vb=b.close||b.price_usd||0; break;
+        case "change": va=a.change||a["24h_change_percentage"]||0; vb=b.change||b["24h_change_percentage"]||0; break;
+        case "volume": va=a.volume||a["24h_vol_usd"]||0; vb=b.volume||b["24h_vol_usd"]||0; break;
+        case "rsi": va=a.RSI||50; vb=b.RSI||50; break;
+        case "mcap": va=a.market_cap_calc||a.market_cap_usd||0; vb=b.market_cap_calc||b.market_cap_usd||0; break;
+        default: va=a._analysis.score; vb=b._analysis.score;
+      }
+      return sortDir==="asc"?(va-vb):(vb-va);
+    });
+
+    return data;
+  },[tvData,coinData,filters,search,sortCol,sortDir]);
+
+  // Tab-specific data
+  const spotData = useMemo(()=>allData.filter(d=>d._marketType==="SPOT"),[allData]);
+  const futData = useMemo(()=>allData.filter(d=>d._marketType==="FUTURES"),[allData]);
+  const displayData = tab==="spot"?spotData:tab==="futures"?futData:allData;
+
+  const isLoading = loading.tv || loading.coin;
+  const countdown = lastScan ? Math.max(0, Math.ceil((12000-(Date.now()-lastScan.getTime()))/1000)) : 12;
+  const strongAlerts = alerts.filter(a=>a.level==="GÜÇLÜ AL").length;
+
+  // Sort handler
+  const handleSort = col => {
+    if(sortCol===col) setSortDir(d=>d==="asc"?"desc":"asc");
+    else { setSortCol(col); setSortDir("desc"); }
+  };
+  const sortIcon = col => sortCol===col ? (sortDir==="asc"?"↑":"↓") : "";
+
+  // ═══ STYLES ═══
+  const S = {
+    app:{display:"flex",flexDirection:"column",height:"100vh",position:"relative",zIndex:1},
+    // Header
+    header:{display:"flex",alignItems:"center",gap:"12px",padding:"0 16px",height:"48px",
+      background:"rgba(3,6,11,.95)",backdropFilter:"blur(20px)",borderBottom:"1px solid #12203a",flexShrink:0},
+    logo:{display:"flex",alignItems:"center",gap:"8px",textDecoration:"none"},
+    hex:{width:"28px",height:"28px",background:`linear-gradient(135deg,${C.cyan},${C.purple})`,
+      clipPath:"polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)",display:"flex",alignItems:"center",
+      justifyContent:"center",fontSize:"9px",fontWeight:800,color:"#000",fontFamily:"var(--head)"},
+    logoTxt:{fontFamily:"var(--head)",fontSize:"15px",fontWeight:800,color:C.white,letterSpacing:"2px"},
+    // Tabs
+    tabBar:{display:"flex",gap:"2px",padding:"0 16px",background:"#050a14",borderBottom:"1px solid #12203a",flexShrink:0},
+    tab:(active)=>({padding:"8px 16px",fontSize:"10px",fontWeight:700,fontFamily:"var(--head)",letterSpacing:".5px",
+      color:active?C.cyan:C.txt2,background:active?"#0a1422":"transparent",borderBottom:active?`2px solid ${C.cyan}`:"2px solid transparent",
+      cursor:"pointer",transition:"all .15s",display:"flex",alignItems:"center",gap:"5px"}),
+    // Stats bar
+    stats:{display:"flex",gap:"16px",padding:"6px 16px",background:"#050a14",borderBottom:"1px solid #0a1422",
+      fontSize:"9px",color:C.txt2,alignItems:"center",flexShrink:0,flexWrap:"wrap"},
+    statBadge:(col)=>({background:col+"15",border:`1px solid ${col}33`,color:col,padding:"1px 8px",
+      borderRadius:"3px",fontSize:"8px",fontWeight:700}),
+    // Search bar
+    searchBar:{display:"flex",gap:"8px",padding:"8px 16px",background:"#050a14",borderBottom:"1px solid #0a1422",
+      alignItems:"center",flexShrink:0},
+    searchInput:{flex:1,background:"#080e1a",border:"1px solid #1a2e4a",color:C.txt,borderRadius:"4px",
+      padding:"6px 12px",fontSize:"11px",fontFamily:"var(--mono)",outline:"none",maxWidth:"320px"},
+    filterBtn:(active)=>({padding:"5px 12px",fontSize:"9px",fontWeight:700,fontFamily:"var(--head)",
+      background:active?C.cyan+"18":"transparent",border:`1px solid ${active?C.cyan+"66":"#1a2e4a"}`,
+      color:active?C.cyan:C.txt2,borderRadius:"4px",cursor:"pointer",display:"flex",alignItems:"center",gap:"4px"}),
+    // Table
+    tbl:{width:"100%",borderCollapse:"collapse"},
+    th:{padding:"6px 10px",textAlign:"left",fontSize:"8px",fontWeight:700,color:C.txt2,letterSpacing:"1px",
+      textTransform:"uppercase",borderBottom:"1px solid #12203a",position:"sticky",top:0,background:"#050a14",
+      cursor:"pointer",userSelect:"none",whiteSpace:"nowrap"},
+    td:{padding:"5px 10px",borderBottom:"1px solid #080e1a",fontSize:"10px",whiteSpace:"nowrap"},
+    row:(sel)=>({background:sel?"#0a1a2e":"transparent",cursor:"pointer",transition:"background .1s"}),
+    // Scroll
+    scroll:{flex:1,overflow:"auto"},
+  };
+
+  return <div style={S.app}>
+    {/* ═══ HEADER ═══ */}
+    <div style={S.header}>
+      <div style={S.logo}>
+        <div style={S.hex}>PX</div>
+        <span style={S.logoTxt}>PROP<span style={{color:C.cyan}}>TREX</span></span>
+      </div>
+      <span style={{fontSize:"8px",color:C.txt3,letterSpacing:"1px",fontFamily:"var(--head)"}}>EXCHANGE HUB</span>
+      <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:"12px"}}>
+        {isLoading && <span style={{color:C.cyan,fontSize:"10px",animation:"pulse 1s infinite"}}>⟳ Taranıyor...</span>}
+        <span style={{fontFamily:"var(--mono)",fontSize:"9px",color:C.txt2}}>UTC {clock}</span>
+        <span style={{fontFamily:"var(--mono)",fontSize:"9px",color:C.cyan}}>⏱ {countdown}s</span>
+      </div>
+    </div>
+
+    {/* ═══ TAB BAR ═══ */}
+    <div style={S.tabBar}>
+      <span style={S.tab(tab==="spot")} onClick={()=>setTab("spot")}>
+        <span style={{color:C.cyan}}>●</span> SPOT <span style={{fontSize:"8px",color:C.txt3}}>({spotData.length})</span>
+      </span>
+      <span style={S.tab(tab==="futures")} onClick={()=>setTab("futures")}>
+        <span style={{color:C.purple}}>●</span> FUTURES <span style={{fontSize:"8px",color:C.txt3}}>({futData.length})</span>
+      </span>
+      <span style={S.tab(tab==="all")} onClick={()=>setTab("all")}>
+        <span style={{color:C.green}}>●</span> HEPSİ <span style={{fontSize:"8px",color:C.txt3}}>({allData.length})</span>
+      </span>
+      <span style={S.tab(tab==="alerts")} onClick={()=>setTab("alerts")}>
+        <span style={{color:C.red}}>●</span> ALERTS <span style={{...S.statBadge(C.red),fontSize:"7px"}}>{strongAlerts}</span>
+      </span>
+    </div>
+
+    {/* ═══ STATS BAR ═══ */}
+    <div style={S.stats}>
+      <span style={S.statBadge(C.green)}>🟢 Güçlü Al: {allData.filter(d=>d._analysis.level==="GÜÇLÜ AL").length}</span>
+      <span style={S.statBadge("#7fff00")}>🟡 Al: {allData.filter(d=>d._analysis.level==="AL").length}</span>
+      <span style={S.statBadge(C.yellow)}>⚡ İzle: {allData.filter(d=>d._analysis.level==="İZLE").length}</span>
+      <span style={{fontSize:"8px",color:C.txt3}}>Toplam: {allData.length} çift</span>
+      <span style={{fontSize:"8px",color:C.txt3}}>Spot: {spotData.length}</span>
+      <span style={{fontSize:"8px",color:C.txt3}}>Futures: {futData.length}</span>
+      <span style={{fontSize:"8px",color:C.txt3}}>Borsalar: {filters.exchanges.size}/{EX_LIST.length}</span>
+      {lastScan && <span style={{fontSize:"8px",color:C.txt3,marginLeft:"auto"}}>Son: {lastScan.toLocaleTimeString("tr-TR")}</span>}
+    </div>
+
+    {/* ═══ SEARCH & FILTER BAR ═══ */}
+    <div style={S.searchBar}>
+      <span style={{color:C.txt3,fontSize:"12px"}}>🔍</span>
+      <input style={S.searchInput} placeholder="Coin ara... (BTC, ETH, SOL...)" value={search}
+        onChange={e=>setSearch(e.target.value)}/>
+      <button style={S.filterBtn(showFilters)} onClick={()=>setShowFilters(true)}>
+        ⚙️ Filtreler {(filters.signalFilter!=="ALL"||filters.marketType!=="ALL"||filters.exchanges.size<EX_LIST.length)&&
+          <span style={{width:"6px",height:"6px",borderRadius:"50%",background:C.cyan}}/>}
+      </button>
+      {/* Quick exchange filter chips */}
+      <div style={{display:"flex",gap:"3px",overflow:"auto",flex:1}}>
+        {["binance","bybit","okx","kucoin","gateio","mexc","bitget","coinbase","kraken"].map(id=>{
+          const ex=EXCHANGES[id]; const active=filters.exchanges.has(id);
+          return <span key={id} style={{padding:"3px 7px",fontSize:"7px",fontWeight:700,
+            background:active?ex.color+"18":"transparent",border:`1px solid ${active?ex.color+"55":"#12203a"}`,
+            color:active?ex.color:C.txt3,borderRadius:"3px",cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}}
+            onClick={()=>{
+              const s=new Set(filters.exchanges);
+              s.has(id)?s.delete(id):s.add(id);
+              setFilters({...filters,exchanges:s});
+            }}>{ex.name}</span>;
+        })}
+      </div>
+    </div>
+
+    {/* ═══ FILTER MODAL ═══ */}
+    {showFilters && <FilterPanel filters={filters} setFilters={setFilters} onClose={()=>setShowFilters(false)}/>}
+
+    {/* ═══ MAIN TABLE ═══ */}
+    {tab!=="alerts" ? (
+      <div style={S.scroll}>
+        <table style={S.tbl}>
+          <thead>
+            <tr>
+              <th style={{...S.th,width:"30px"}}>#</th>
+              <th style={S.th} onClick={()=>handleSort("name")}>SEMBol {sortIcon("name")}</th>
+              <th style={S.th}>TİP</th>
+              <th style={S.th}>BORSA</th>
+              <th style={S.th} onClick={()=>handleSort("price")}>FİYAT {sortIcon("price")}</th>
+              <th style={S.th} onClick={()=>handleSort("change")}>DEĞİŞİM {sortIcon("change")}</th>
+              <th style={S.th}>CHART</th>
+              <th style={S.th} onClick={()=>handleSort("volume")}>HACİM {sortIcon("volume")}</th>
+              <th style={S.th} onClick={()=>handleSort("mcap")}>MCAP {sortIcon("mcap")}</th>
+              <th style={S.th} onClick={()=>handleSort("rsi")}>RSI {sortIcon("rsi")}</th>
+              <th style={S.th} onClick={()=>handleSort("score")}>SKOR {sortIcon("score")}</th>
+              <th style={S.th}>SİNYAL</th>
+              <th style={S.th}>İŞLEM</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayData.length===0 && <tr><td colSpan={13} style={{...S.td,textAlign:"center",color:C.muted,padding:"40px"}}>
+              {isLoading?"⟳ Veriler yükleniyor...":"Filtrelerinize uygun veri bulunamadı"}</td></tr>}
+            {displayData.slice(0,300).map((d,i)=>{
+              const sym = d._sym || d.name || "?";
+              const price = d.close || d.price_usd;
+              const change = d.change ?? d["24h_change_percentage"] ?? 0;
+              const vol = d.volume || d["24h_vol_usd"] || 0;
+              const mcap = d.market_cap_calc || d.market_cap_usd || 0;
+              const rsi = d.RSI;
+              const ex = EXCHANGES[d._exId];
+              const sel = selectedRow===d._id;
+
+              return <tr key={d._id||i} style={S.row(sel)}
+                onClick={()=>setSelectedRow(sel?null:d._id)}
+                onMouseEnter={e=>e.currentTarget.style.background="#0a1422"}
+                onMouseLeave={e=>e.currentTarget.style.background=sel?"#0a1a2e":"transparent"}>
+                <td style={{...S.td,color:C.txt3,fontSize:"8px"}}>{i+1}</td>
+                <td style={S.td}>
+                  <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+                    <span style={{fontWeight:700,color:C.white,fontSize:"11px"}}>{sym.length>12?sym.slice(0,12)+"…":sym}</span>
+                    {d.description && <span style={{fontSize:"8px",color:C.txt3,maxWidth:"100px",overflow:"hidden",textOverflow:"ellipsis"}}>
+                      {d.description.length>20?d.description.slice(0,20)+"…":d.description}</span>}
+                  </div>
+                </td>
+                <td style={S.td}><TypePill type={d._marketType}/></td>
+                <td style={S.td}><ExBadge exId={d._exId}/></td>
+                <td style={{...S.td,fontWeight:700,color:C.white,fontFamily:"var(--mono)"}}>{fP(price)}</td>
+                <td style={{...S.td,fontWeight:700,color:pC(change),fontFamily:"var(--mono)"}}>{fC(change)}</td>
+                <td style={S.td}><Spark change={change}/></td>
+                <td style={{...S.td,color:C.txt2,fontFamily:"var(--mono)"}}>{fU(vol)}</td>
+                <td style={{...S.td,color:C.txt2,fontFamily:"var(--mono)",fontSize:"9px"}}>{fU(mcap)}</td>
+                <td style={S.td}>
+                  {rsi!=null ? <span style={{fontFamily:"var(--mono)",fontSize:"10px",fontWeight:700,
+                    color:rsi<30?C.green:rsi>70?C.red:C.txt2}}>{rsi.toFixed(0)}</span> : <span style={{color:C.muted}}>—</span>}
+                </td>
+                <td style={S.td}><ScoreBar score={d._analysis.score} level={d._analysis.level}/></td>
+                <td style={S.td}><LevelPill level={d._analysis.level}/></td>
+                <td style={S.td}>
+                  {ex && <a href={ex.tradeUrl(sym)} target="_blank" rel="noopener noreferrer"
+                    style={{display:"inline-flex",alignItems:"center",gap:"3px",background:C.cyan+"12",
+                      border:`1px solid ${C.cyan}33`,color:C.cyan,borderRadius:"3px",
+                      padding:"2px 8px",fontSize:"8px",fontWeight:700,textDecoration:"none"}}
+                    onClick={e=>e.stopPropagation()}>
+                    İşlem ↗
+                  </a>}
+                </td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      /* ═══ ALERTS TAB ═══ */
+      <div style={S.scroll}>
+        <div style={{padding:"12px 16px"}}>
+          <div style={{fontSize:"11px",fontWeight:700,color:C.cyan,marginBottom:"10px",fontFamily:"var(--head)",letterSpacing:"1px"}}>
+            🚨 CANLI UYARILAR — Güçlü Sinyaller ({alerts.length})
+          </div>
+          {alerts.length===0 && <div style={{color:C.muted,textAlign:"center",padding:"40px"}}>Henüz güçlü sinyal algılanmadı. Tarama devam ediyor...</div>}
+          {alerts.map(a=>(
+            <div key={a.id} className="fade-in" style={{background:"#080e1a",border:"1px solid #1a2e4a",borderRadius:"6px",
+              padding:"10px 14px",marginBottom:"6px",display:"flex",gap:"12px",alignItems:"center"}}>
+              <div style={{width:"40px",height:"40px",borderRadius:"50%",background:C.green+"18",border:`1px solid ${C.green}44`,
+                display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",flexShrink:0}}>🚀</div>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:"8px",alignItems:"center",marginBottom:"3px"}}>
+                  <span style={{fontWeight:800,color:C.white,fontSize:"12px"}}>{a.name}</span>
+                  <ExBadge exId={a.exId}/>
+                  <LevelPill level={a.level}/>
+                  <ScoreBar score={a.score} level={a.level}/>
+                </div>
+                <div style={{fontSize:"8px",color:C.txt2,display:"flex",gap:"8px",flexWrap:"wrap"}}>
+                  <span>💰 {fP(a.price)}</span>
+                  <span style={{color:pC(a.change)}}>{fC(a.change)}</span>
+                  {a.signals?.map((s,i)=><span key={i} style={{color:C.green}}>{s}</span>)}
+                </div>
+              </div>
+              <span style={{fontSize:"8px",color:C.txt3}}>{a.ts?.toLocaleTimeString("tr-TR")}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* ═══ SELECTED ROW DETAIL ═══ */}
+    {selectedRow && tab!=="alerts" && (()=>{
+      const d = displayData.find(x=>x._id===selectedRow);
+      if(!d) return null;
+      const sym = d._sym||d.name;
+      const price = d.close||d.price_usd;
+      const change = d.change??d["24h_change_percentage"]??0;
+      const ex = EXCHANGES[d._exId];
+      return <div style={{borderTop:"1px solid #1a2e4a",background:"#060c16",padding:"10px 16px",flexShrink:0,
+        display:"flex",gap:"16px",alignItems:"center",flexWrap:"wrap",fontSize:"10px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+          <span style={{fontWeight:800,color:C.white,fontSize:"14px"}}>{sym}</span>
+          <TypePill type={d._marketType}/>
+          <ExBadge exId={d._exId} size="md"/>
+        </div>
+        <span style={{color:C.white,fontWeight:700}}>{fP(price)}</span>
+        <span style={{color:pC(change),fontWeight:700}}>{fC(change)}</span>
+        {d.RSI!=null && <span style={{color:C.txt2}}>RSI: <span style={{color:d.RSI<30?C.green:d.RSI>70?C.red:C.txt,fontWeight:700}}>{d.RSI.toFixed(1)}</span></span>}
+        <span style={{color:C.txt2}}>Vol: {fU(d.volume||d["24h_vol_usd"])}</span>
+        <LevelPill level={d._analysis.level}/>
+        <div style={{display:"flex",gap:"4px",flexWrap:"wrap"}}>
+          {d._analysis.signals?.map((s,i)=><span key={i} style={{fontSize:"8px",color:C.green,
+            background:C.green+"12",border:`1px solid ${C.green}22`,borderRadius:"3px",padding:"1px 6px"}}>{s}</span>)}
+          {d._analysis.risks?.map((s,i)=><span key={i} style={{fontSize:"8px",color:C.red,
+            background:C.red+"12",border:`1px solid ${C.red}22`,borderRadius:"3px",padding:"1px 6px"}}>{s}</span>)}
+        </div>
+        {/* Exchange links */}
+        <div style={{display:"flex",gap:"4px",marginLeft:"auto",flexWrap:"wrap"}}>
+          {ex && <a href={ex.tradeUrl(sym)} target="_blank" rel="noopener noreferrer"
+            style={{display:"inline-flex",alignItems:"center",gap:"3px",background:ex.color+"18",
+              border:`1px solid ${ex.color}44`,color:ex.color,borderRadius:"3px",
+              padding:"2px 8px",fontSize:"8px",fontWeight:700,textDecoration:"none"}}>
+            {ex.name} ↗
+          </a>}
+          <a href={`https://tr.tradingview.com/chart/?symbol=${encodeURIComponent(d._id||sym)}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{display:"inline-flex",alignItems:"center",gap:"3px",background:"#1e88e518",
+              border:"1px solid #1e88e544",color:"#1e88e5",borderRadius:"3px",
+              padding:"2px 8px",fontSize:"8px",fontWeight:700,textDecoration:"none"}}>
+            📈 TradingView ↗
+          </a>
+          <a href={`https://www.coingecko.com/tr/coins/${(sym||"").toLowerCase()}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{display:"inline-flex",alignItems:"center",gap:"3px",background:"#8cc63f18",
+              border:"1px solid #8cc63f44",color:"#8cc63f",borderRadius:"3px",
+              padding:"2px 8px",fontSize:"8px",fontWeight:700,textDecoration:"none"}}>
+            🦎 CoinGecko ↗
+          </a>
+        </div>
+      </div>;
+    })()}
+
+    {/* ═══ FOOTER ═══ */}
+    <div style={{borderTop:"1px solid #080e1a",padding:"4px 16px",display:"flex",gap:"12px",
+      fontSize:"7px",color:"#0d2a3e",flexWrap:"wrap",flexShrink:0,background:"#030610"}}>
+      <span style={{color:"#1a4060"}}>Kaynak: TradingView Scanner + CoinGecko + 19 CEX API</span>
+      <span style={{color:"#1a4060"}}>Borsalar: {EX_LIST.length} CEX (Spot + Futures)</span>
+      <span style={{color:"#1a4060"}}>API Kataloğu: 54 endpoint</span>
+      <span style={{color:C.red,opacity:.5}}>⚠️ Yatırım tavsiyesi değildir. DYOR.</span>
+      <span style={{marginLeft:"auto",color:"#1a4060"}}>PROPTREX v3.0 — Faz 1</span>
+    </div>
+  </div>;
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>

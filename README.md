@@ -78,6 +78,7 @@ docker compose logs -f
 |-----|-------|
 | `proptrex.com/` | Landing page (ana sayfa) |
 | `proptrex.com/platform` | Trading platform (asıl panel) |
+| `proptrex.com/exchange` | Exchange Hub — 19 CEX, Spot/Futures, Filtreler |
 | `proptrex.com/dashboard` | Market dashboard |
 | `proptrex.com/health` | Health check endpoint |
 
