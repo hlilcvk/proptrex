@@ -20,8 +20,6 @@ RUN rm -rf /usr/share/nginx/html/*
 COPY --from=builder /build/index.html     /usr/share/nginx/html/index.html
 COPY --from=builder /build/platform.html  /usr/share/nginx/html/platform.html
 COPY --from=builder /build/dashboard.html /usr/share/nginx/html/dashboard.html
-
-# Exchange Hub
 COPY --from=builder /build/exchange-hub.html /usr/share/nginx/html/exchange-hub.html
 
 # PWA Mobile App
@@ -32,6 +30,7 @@ COPY --from=builder /build/sw.js          /usr/share/nginx/html/sw.js
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
 
 RUN adduser -S -D -H -u 1001 proptrex && \
+    sed -i 's|/run/nginx.pid|/tmp/nginx.pid|g' /etc/nginx/nginx.conf && \
     chown -R proptrex:0 /var/cache/nginx /var/run /var/log/nginx && \
     chmod -R g+w /var/cache/nginx /var/run /var/log/nginx
 
