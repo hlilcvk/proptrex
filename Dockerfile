@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════
-#  PROPTREX — Dockerfile v2.2
+#  PROPTREX — Dockerfile v2.3
 #  Web + PWA Mobile App
 #  www.proptrex.com
 # ═══════════════════════════════════════════════════════════
@@ -12,7 +12,10 @@ FROM nginx:1.27-alpine AS production
 
 LABEL org.opencontainers.image.title="PROPTREX Platform"
 LABEL org.opencontainers.image.description="Global Market Intelligence + PWA Mobile App"
-LABEL org.opencontainers.image.version="2.2.0"
+LABEL org.opencontainers.image.version="2.3.0"
+
+# wget healthcheck için gerekli
+RUN apk add --no-cache wget
 
 RUN rm -rf /usr/share/nginx/html/*
 
