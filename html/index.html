@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROPTREX — AI Agent Trading Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Outfit:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --white:#fff;--off-white:#fafaf8;--cream:#f5f4f0;
+  --g50:#f8f7f4;--g100:#eeedea;--g200:#e0dfdb;--g300:#c8c7c2;--g400:#9c9b96;--g500:#6e6d68;--g600:#4a4944;--g700:#333230;--g800:#1e1d1b;--g900:#0f0e0c;
+  --ink:#0a0908;--ink2:#1a1918;--ink3:#3d3c3a;
+  --blue:#0038ff;--blue-l:#e8edff;--green:#00875a;--green-l:#e6f5ef;--red:#e8432a;--red-l:#fef0ed;--gold:#c49a2a;--gold-l:#fdf8eb;--purple:#7c3aed;--purple-l:#f3eeff;--cyan:#0891b2;--cyan-l:#e8fafb;
+  --ed:'Cormorant Garamond','Georgia',serif;--sans:'Outfit',-apple-system,sans-serif;--mono:'JetBrains Mono','SF Mono',monospace;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --r-sm:8px;--r-md:14px;--r-lg:20px;--r-xl:28px;
+  --sh-s:0 1px 3px rgba(10,9,8,.04);--sh-c:0 4px 24px rgba(10,9,8,.06);--sh-e:0 12px 48px rgba(10,9,8,.08);--sh-d:0 32px 80px rgba(10,9,8,.12);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--white);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.6}
+::selection{background:var(--blue);color:var(--white)}
+.ctn{max-width:1320px;margin:0 auto;padding:0 48px}
+
+/* REVEAL */
+.rv{opacity:0;transform:translateY(40px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.rv.in{opacity:1;transform:none}
+.rv-d1{transition-delay:.06s}.rv-d2{transition-delay:.12s}.rv-d3{transition-delay:.18s}.rv-d4{transition-delay:.24s}.rv-d5{transition-delay:.3s}.rv-d6{transition-delay:.36s}
+
+/* ═══════════ NAV ═══════════ */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 36px;background:rgba(255,255,255,.72);backdrop-filter:blur(32px) saturate(1.6);border-bottom:1px solid transparent;transition:all .3s ease}
+.nav.scrolled{border-bottom-color:var(--g200);background:rgba(255,255,255,.94)}
+.nav-left{display:flex;align-items:center;gap:28px}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none}
+.logo-m{width:32px;height:32px;background:var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;color:var(--white);letter-spacing:-.5px}
+.logo-t{font-family:var(--mono);font-weight:600;font-size:15px;color:var(--ink);letter-spacing:3px}
+
+/* Main menu items */
+.nav-items{display:flex;gap:4px;list-style:none}
+.nav-item{position:relative}
+.nav-item>a{display:flex;align-items:center;gap:5px;padding:8px 14px;font-size:15px;font-weight:600;color:var(--g600);letter-spacing:.2px;text-decoration:none;border-radius:8px;transition:all .2s ease}
+.nav-item>a:hover,.nav-item.open>a{background:var(--g50);color:var(--ink)}
+.nav-item>a .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.nav-item>a .arr{font-size:10px;opacity:.4;transition:transform .2s}
+.nav-item.open>a .arr{transform:rotate(180deg)}
+
+/* Mega dropdown */
+.mega{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);width:420px;background:var(--white);border:1px solid var(--g200);border-radius:var(--r-lg);box-shadow:var(--sh-d);opacity:0;visibility:hidden;pointer-events:none;transition:all .25s var(--ease);overflow:hidden}
+.nav-item.open .mega{opacity:1;visibility:visible;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.mega-head{padding:16px 20px 12px;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between}
+.mega-head-left{display:flex;align-items:center;gap:8px}
+.mega-head-icon{font-size:20px}
+.mega-head-title{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--ink)}
+.mega-head-badge{font-family:var(--mono);font-size:12px;font-weight:600;padding:3px 8px;border-radius:100px;letter-spacing:.5px}
+.mega-body{padding:16px 20px}
+.mega-links{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.mega-link{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;text-decoration:none;transition:background .15s}
+.mega-link:hover{background:var(--g50)}
+.mega-link-icon{font-size:18px;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.mega-link-text{font-size:14px;font-weight:600;color:var(--ink)}
+.mega-link-sub{font-size:13px;color:var(--g400);margin-top:1px}
+.mega-foot{padding:12px 20px;border-top:1px solid var(--g100);background:var(--g50)}
+.mega-foot a{font-size:14px;font-weight:600;color:var(--blue);text-decoration:none;display:flex;align-items:center;gap:4px}
+
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-live{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:12px;color:var(--green);letter-spacing:.5px;font-weight:600}
+.nav-live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,135,90,.3)}50%{box-shadow:0 0 0 5px rgba(0,135,90,0)}}
+
+/* Lang */
+.lang-sw{position:relative;display:flex;align-items:center;gap:5px;padding:5px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:100px;cursor:pointer;font-size:14px;font-weight:600;color:var(--ink3);user-select:none;transition:all .2s}
+.lang-sw:hover{border-color:var(--g300)}
+.lang-sw .lc{font-family:var(--mono);font-size:13px;letter-spacing:.5px}
+.lang-sw .la{font-size:10px;opacity:.4}
+.lang-dd{position:absolute;top:calc(100% + 6px);right:0;width:180px;background:var(--white);border:1px solid var(--g200);border-radius:var(--r-md);box-shadow:var(--sh-e);opacity:0;visibility:hidden;transform:translateY(-6px);transition:all .2s var(--ease);z-index:200;max-height:320px;overflow-y:auto}
+.lang-sw.open .lang-dd{opacity:1;visibility:visible;transform:translateY(0)}
+.lang-opt{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;font-size:14px;color:var(--ink3);transition:background .1s}
+.lang-opt:hover{background:var(--g50)}
+.lang-opt.act{color:var(--blue);font-weight:600}
+.lang-opt .fl{font-size:16px}
+.lang-opt .ck{font-size:13px;color:var(--blue);margin-left:auto;opacity:0}
+.lang-opt.act .ck{opacity:1}
+
+.btn-nav{padding:8px 18px;background:var(--ink);color:var(--white);font-size:14px;font-weight:600;letter-spacing:.3px;border:none;border-radius:var(--r-sm);cursor:pointer;text-decoration:none;transition:all .2s}
+.btn-nav:hover{transform:translateY(-1px);box-shadow:var(--sh-c)}
+
+/* ═══════════ HERO ═══════════ */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;padding:100px 0 60px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 50% 50% at 70% 25%,rgba(0,56,255,.03) 0%,transparent 60%),radial-gradient(ellipse 40% 40% at 25% 70%,rgba(0,135,90,.025) 0%,transparent 60%),var(--white)}
+.hero-inner{position:relative;z-index:2;width:100%;max-width:1320px;margin:0 auto;padding:0 48px}
+.hero-top{text-align:center;max-width:780px;margin:0 auto 64px}
+.hero-over{display:inline-flex;align-items:center;gap:8px;margin-bottom:28px;animation:fu .7s var(--ease) .1s both}
+.hero-over-line{width:28px;height:1.5px;background:var(--ink)}
+.hero-over-text{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--ink3)}
+.hero-h{font-family:var(--ed);font-size:clamp(44px,5.5vw,76px);font-weight:300;line-height:1.06;letter-spacing:-1.5px;color:var(--ink);margin-bottom:24px;animation:fu .7s var(--ease) .2s both}
+.hero-h em{font-style:italic;font-weight:400;background:linear-gradient(135deg,var(--blue),#0066ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-h strong{font-weight:500;position:relative}
+.hero-h strong::after{content:'';position:absolute;bottom:2px;left:0;right:0;height:7px;background:rgba(0,56,255,.07);border-radius:2px}
+.hero-p{font-size:19px;line-height:1.75;color:var(--g500);max-width:560px;margin:0 auto 36px;animation:fu .7s var(--ease) .3s both}
+.hero-btns{display:flex;justify-content:center;gap:12px;animation:fu .7s var(--ease) .4s both}
+.btn-h1{display:inline-flex;align-items:center;gap:7px;padding:14px 30px;background:var(--ink);color:var(--white);font-size:15px;font-weight:600;border:none;border-radius:10px;cursor:pointer;text-decoration:none;transition:all .3s}
+.btn-h1:hover{transform:translateY(-2px);box-shadow:var(--sh-d)}
+.btn-h2{display:inline-flex;align-items:center;gap:7px;padding:14px 30px;background:transparent;color:var(--ink);font-size:15px;font-weight:600;border:1.5px solid var(--g300);border-radius:10px;cursor:pointer;text-decoration:none;transition:all .3s}
+.btn-h2:hover{border-color:var(--ink)}
+@keyframes fu{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
+
+/* ═══════════ LIVE INTELLIGENCE PANELS ═══════════ */
+.panels-section{animation:fu .7s var(--ease) .55s both}
+.panels-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.panels-title{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--g400);display:flex;align-items:center;gap:8px}
+.panels-title .pdot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+.panels-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+
+/* Individual Panel Card */
+.panel{background:var(--white);border:1px solid var(--g200);border-radius:var(--r-lg);overflow:hidden;transition:all .35s ease;position:relative}
+.panel:hover{transform:translateY(-3px);box-shadow:var(--sh-e);border-color:var(--g300)}
+.panel-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--g100)}
+.panel-bar-left{display:flex;align-items:center;gap:8px}
+.panel-icon{font-size:17px}
+.panel-name{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.8px}
+.panel-agent{font-family:var(--mono);font-size:8.5px;color:var(--g400);letter-spacing:.5px;display:flex;align-items:center;gap:4px}
+.panel-agent .ag-dot{width:4px;height:4px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+.panel-body{padding:14px 16px}
+
+/* Mini data rows inside panels */
+.mini-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g100);font-size:14px}
+.mini-row:last-child{border-bottom:none}
+.mini-label{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)}
+.mini-label .mc{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--white)}
+.mini-val{font-family:var(--mono);font-weight:500;color:var(--ink);font-size:14px}
+.mini-chg{font-family:var(--mono);font-weight:600;font-size:13px}
+.mini-chg.up{color:var(--green)}.mini-chg.dn{color:var(--red)}
+.mini-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:5px;font-family:var(--mono);font-size:12px;font-weight:600}
+.mini-badge.buy{background:var(--green-l);color:var(--green)}
+.mini-badge.sell{background:var(--red-l);color:var(--red)}
+.mini-badge.hold{background:var(--g100);color:var(--g400)}
+.mini-badge.hot{background:var(--red-l);color:var(--red)}
+.mini-badge.new{background:var(--blue-l);color:var(--blue)}
+
+/* Gauge */
+.gauge-wrap{text-align:center;padding:8px 0}
+.gauge-svg{width:120px;height:68px;margin:0 auto}
+.gauge-val{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--ink);margin-top:4px}
+.gauge-label{font-size:13px;color:var(--g400);font-weight:500}
+
+/* Bar chart mini */
+.bar-row{display:flex;align-items:center;gap:8px;padding:5px 0}
+.bar-label{font-size:13px;font-weight:600;color:var(--ink);width:50px;flex-shrink:0}
+.bar-track{flex:1;height:6px;background:var(--g100);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s var(--ease)}
+.bar-val{font-family:var(--mono);font-size:12px;color:var(--g400);width:36px;text-align:right;flex-shrink:0}
+
+/* Panel link */
+.panel-foot{padding:10px 16px;border-top:1px solid var(--g100);background:var(--g50)}
+.panel-foot a{font-size:13px;font-weight:600;color:var(--blue);text-decoration:none;display:flex;align-items:center;gap:4px;letter-spacing:.2px}
+.panel-foot a:hover{text-decoration:underline}
+
+/* ═══════════ TICKER ═══════════ */
+.ticker{border-top:1px solid var(--g200);border-bottom:1px solid var(--g200);padding:10px 0;background:var(--g50);overflow:hidden;margin-top:64px}
+.ticker-track{display:flex;width:max-content;animation:ts 50s linear infinite}
+.ticker-item{display:flex;align-items:center;gap:5px;padding:0 24px;white-space:nowrap;font-family:var(--mono);font-size:14px;color:var(--g500);font-weight:500}
+.ticker-item .up{color:var(--green);font-weight:600}
+.ticker-item .dn{color:var(--red);font-weight:600}
+.ticker-item .hi{color:var(--blue);font-weight:600}
+.ticker-sep{color:var(--g300);padding:0 6px;font-size:10px}
+@keyframes ts{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ═══════════ SECTIONS ═══════════ */
+.section{padding:110px 0}.section.alt{background:var(--g50)}
+.sec-head{text-align:center;margin-bottom:64px}
+.sec-tag{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--blue);margin-bottom:18px}
+.sec-tag::before,.sec-tag::after{content:'';width:18px;height:1px;background:var(--blue);opacity:.3}
+.sec-title{font-family:var(--ed);font-size:clamp(32px,3.8vw,52px);font-weight:300;line-height:1.12;letter-spacing:-1px;color:var(--ink);margin-bottom:14px}
+.sec-title em{font-style:italic;font-weight:400}
+.sec-sub{font-size:17px;color:var(--g500);max-width:480px;margin:0 auto;line-height:1.75}
+
+/* AGENTS */
+.agents-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.ag-card{background:var(--white);border:1px solid var(--g200);border-radius:var(--r-lg);padding:32px 24px;transition:all .4s var(--ease);position:relative;overflow:hidden}
+.ag-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;transform:scaleX(0);transform-origin:left;transition:transform .4s var(--ease)}
+.ag-card:hover::after{transform:scaleX(1)}
+.ag-card:hover{transform:translateY(-5px);box-shadow:var(--sh-d);border-color:transparent}
+.ag-card[data-color="blue"]::after{background:var(--blue)}
+.ag-card[data-color="green"]::after{background:var(--green)}
+.ag-card[data-color="purple"]::after{background:var(--purple)}
+.ag-card[data-color="gold"]::after{background:var(--gold)}
+.ag-card[data-color="cyan"]::after{background:var(--cyan)}
+.ag-card[data-color="red"]::after{background:var(--red)}
+.ag-num{font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:2px;margin-bottom:16px}
+.ag-ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:20px}
+.ag-nm{font-family:var(--ed);font-size:24px;font-weight:500;color:var(--ink);margin-bottom:5px}
+.ag-rl{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--g400);margin-bottom:14px}
+.ag-ds{font-size:15px;line-height:1.7;color:var(--g500);margin-bottom:20px}
+.ag-tags{display:flex;flex-wrap:wrap;gap:4px}
+.ag-tg{padding:3px 9px;background:var(--g50);border:1px solid var(--g200);border-radius:5px;font-family:var(--mono);font-size:12px;color:var(--g500)}
+
+/* PRICING */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;max-width:1100px;margin:0 auto;align-items:start}
+.pc{background:var(--white);border:1px solid var(--g200);border-radius:var(--r-xl);padding:40px 32px;transition:all .4s;position:relative}
+.pc:hover{transform:translateY(-4px);box-shadow:var(--sh-d)}
+.pc.pop{border-color:var(--ink);box-shadow:var(--sh-d)}
+.pc.pop::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--green))}
+.pop-b{position:absolute;top:-11px;left:50%;transform:translateX(-50%);padding:4px 16px;background:var(--ink);color:var(--white);font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;border-radius:100px}
+.pc-tier{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--g400);margin-bottom:14px}
+.pc-pr{display:flex;align-items:baseline;gap:2px;margin-bottom:5px}
+.pc-cur{font-size:22px;color:var(--g500)}
+.pc-val{font-family:var(--ed);font-size:60px;font-weight:500;color:var(--ink);letter-spacing:-2px;line-height:1}
+.pc-per{font-size:14px;color:var(--g400);margin-bottom:20px}
+.pc-desc{font-size:15px;color:var(--g500);line-height:1.6;margin-bottom:24px;min-height:40px}
+.pc-feats{list-style:none;margin-bottom:28px}
+.pc-feats li{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:15px;color:var(--g600)}
+.pc-feats li .ic{font-size:15px}
+.pc-feats li.off{color:var(--g300);text-decoration:line-through}
+.pc-btn{display:block;width:100%;padding:13px;text-align:center;border-radius:10px;font-weight:600;font-size:15px;cursor:pointer;text-decoration:none;transition:all .3s}
+.pc-btn.dark{background:var(--ink);color:var(--white);border:none}
+.pc-btn.dark:hover{transform:translateY(-1px);box-shadow:var(--sh-e)}
+.pc-btn.out{background:transparent;color:var(--ink);border:1.5px solid var(--g300)}
+.pc-btn.out:hover{border-color:var(--ink)}
+
+/* BILLING TOGGLE */
+.bill-tog{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:40px}
+.bill-lbl{font-size:15px;color:var(--g500);font-weight:500;cursor:pointer;transition:color .2s}
+.bill-lbl.act{color:var(--ink);font-weight:600}
+.tog-track{width:44px;height:24px;background:var(--g200);border-radius:100px;position:relative;cursor:pointer;transition:background .2s}
+.tog-track.on{background:var(--blue)}
+.tog-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;background:var(--white);border-radius:50%;box-shadow:var(--sh-s);transition:transform .25s var(--ease)}
+.tog-track.on .tog-thumb{transform:translateX(20px)}
+.ann-save{padding:3px 9px;border-radius:100px;background:var(--green-l);color:var(--green);font-family:var(--mono);font-size:12px;font-weight:600}
+
+/* CTA */
+.cta{padding:130px 0;text-align:center;background:var(--ink);color:var(--white);position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(0,56,255,.1) 0%,transparent 60%)}
+.cta-in{position:relative;z-index:2}
+.cta-t{font-family:var(--ed);font-size:clamp(36px,5vw,60px);font-weight:300;line-height:1.1;margin-bottom:18px}
+.cta-t em{font-style:italic;font-weight:400;color:rgba(255,255,255,.45)}
+.cta-s{font-size:18px;color:rgba(255,255,255,.45);max-width:480px;margin:0 auto 36px;line-height:1.7}
+.cta-btns{display:flex;justify-content:center;gap:12px}
+.btn-cw{padding:14px 32px;background:var(--white);color:var(--ink);font-size:15px;font-weight:600;border:none;border-radius:10px;cursor:pointer;text-decoration:none;transition:all .3s}
+.btn-cw:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.btn-co{padding:14px 32px;background:transparent;color:var(--white);font-size:15px;font-weight:500;border:1px solid rgba(255,255,255,.2);border-radius:10px;cursor:pointer;text-decoration:none;transition:all .3s}
+.btn-co:hover{border-color:rgba(255,255,255,.5)}
+
+/* FOOTER */
+.footer{padding:48px 0 32px;border-top:1px solid var(--g200)}
+.footer-grid{display:grid;grid-template-columns:2.5fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
+.footer-desc{font-size:14px;color:var(--g400);line-height:1.7;margin-top:10px;max-width:260px}
+.footer-ct{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--g400);margin-bottom:16px}
+.footer-links{list-style:none}
+.footer-links li{margin-bottom:8px}
+.footer-links a{font-size:14px;color:var(--g500);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--ink)}
+.footer-bot{padding-top:20px;border-top:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between}
+.footer-copy{font-size:14px;color:var(--g400)}
+.footer-legal{font-size:13px;color:var(--g400);max-width:500px;text-align:right;line-height:1.5}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.panels-grid{grid-template-columns:repeat(2,1fr)}.agents-grid{grid-template-columns:repeat(2,1fr)}.pricing-grid{grid-template-columns:1fr;max-width:400px}}
+@media(max-width:768px){.ctn{padding:0 20px}.nav{padding:0 16px}.nav-items{display:none}.hero-inner{padding:0 20px}.panels-grid,.agents-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:1fr 1fr}.mega{display:none}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="mainNav">
+  <div class="nav-left">
+    <a href="#" class="logo"><div class="logo-m">PX</div><span class="logo-t">PROPTREX</span></a>
+    <ul class="nav-items">
+      <li class="nav-item" data-menu="crypto">
+        <a href="#"><span class="dot" style="background:#f7931a"></span>Crypto <span class="arr">▼</span></a>
+        <div class="mega">
+          <div class="mega-head"><div class="mega-head-left"><span class="mega-head-icon">₿</span><span class="mega-head-title">Crypto Intelligence</span></div><span class="mega-head-badge" style="background:var(--green-l);color:var(--green)">AI AGENT ACTIVE</span></div>
+          <div class="mega-body"><div class="mega-links">
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:#fff7ed">📊</div><div><div class="mega-link-text">DIP SCORE™ Table</div><div class="mega-link-sub">300+ coins scored live</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:#fef0ed">😱</div><div><div class="mega-link-text">Fear & Greed Index</div><div class="mega-link-sub">AI sentiment gauge</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:#e6f5ef">🗺️</div><div><div class="mega-link-text">Heat Map</div><div class="mega-link-sub">Market cap visualization</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--blue-l)">📈</div><div><div class="mega-link-text">Market Distribution</div><div class="mega-link-sub">Sector & cap breakdown</div></div></a>
+          </div></div>
+          <div class="mega-foot"><a href="#">Open Crypto Dashboard →</a></div>
+        </div>
+      </li>
+      <li class="nav-item" data-menu="cex">
+        <a href="#"><span class="dot" style="background:var(--gold)"></span>CEX <span class="arr">▼</span></a>
+        <div class="mega">
+          <div class="mega-head"><div class="mega-head-left"><span class="mega-head-icon">⚡</span><span class="mega-head-title">CEX Intelligence</span></div><span class="mega-head-badge" style="background:var(--gold-l);color:var(--gold)">AI AGENT ACTIVE</span></div>
+          <div class="mega-body"><div class="mega-links">
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:#fff7ed">📋</div><div><div class="mega-link-text">Order Book</div><div class="mega-link-sub">Binance depth analysis</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--green-l)">📊</div><div><div class="mega-link-text">Volume Charts</div><div class="mega-link-sub">Exchange volume tracking</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--blue-l)">💰</div><div><div class="mega-link-text">Funding Rate</div><div class="mega-link-sub">Perpetual funding rates</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--red-l)">🚀</div><div><div class="mega-link-text">Top Gainers</div><div class="mega-link-sub">24h biggest movers</div></div></a>
+          </div></div>
+          <div class="mega-foot"><a href="#">Open CEX Dashboard →</a></div>
+        </div>
+      </li>
+      <li class="nav-item" data-menu="dex">
+        <a href="#"><span class="dot" style="background:var(--purple)"></span>DEX <span class="arr">▼</span></a>
+        <div class="mega">
+          <div class="mega-head"><div class="mega-head-left"><span class="mega-head-icon">🔗</span><span class="mega-head-title">DEX Intelligence</span></div><span class="mega-head-badge" style="background:var(--purple-l);color:var(--purple)">AI AGENT ACTIVE</span></div>
+          <div class="mega-body"><div class="mega-links">
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--green-l)">💎</div><div><div class="mega-link-text">Top APY Pools</div><div class="mega-link-sub">Highest yield farming</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--blue-l)">🔒</div><div><div class="mega-link-text">Chain TVL</div><div class="mega-link-sub">Total value locked by chain</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--gold-l)">✨</div><div><div class="mega-link-text">New Launches</div><div class="mega-link-sub">Fresh token listings</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--red-l)">🐋</div><div><div class="mega-link-text">Whale Swaps</div><div class="mega-link-sub">Large DEX transactions</div></div></a>
+          </div></div>
+          <div class="mega-foot"><a href="#">Open DEX Dashboard →</a></div>
+        </div>
+      </li>
+      <li class="nav-item" data-menu="stocks">
+        <a href="#"><span class="dot" style="background:var(--blue)"></span>Stocks <span class="arr">▼</span></a>
+        <div class="mega">
+          <div class="mega-head"><div class="mega-head-left"><span class="mega-head-icon">📊</span><span class="mega-head-title">Stock Intelligence</span></div><span class="mega-head-badge" style="background:var(--blue-l);color:var(--blue)">AI AGENT ACTIVE</span></div>
+          <div class="mega-body"><div class="mega-links">
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--green-l)">📈</div><div><div class="mega-link-text">AI Signals</div><div class="mega-link-sub">Global stock picks</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--blue-l)">🏭</div><div><div class="mega-link-text">Sector Performance</div><div class="mega-link-sub">Industry breakdown</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:#fff7ed">🇹🇷</div><div><div class="mega-link-text">BIST Index</div><div class="mega-link-sub">Turkish market coverage</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--red-l)">🌍</div><div><div class="mega-link-text">Global Indices</div><div class="mega-link-sub">S&P, NASDAQ, DAX, Nikkei</div></div></a>
+          </div></div>
+          <div class="mega-foot"><a href="#">Open Stocks Dashboard →</a></div>
+        </div>
+      </li>
+      <li class="nav-item" data-menu="byf">
+        <a href="#"><span class="dot" style="background:var(--cyan)"></span>BYF <span class="arr">▼</span></a>
+        <div class="mega">
+          <div class="mega-head"><div class="mega-head-left"><span class="mega-head-icon">🧩</span><span class="mega-head-title">ETF / Fund Intelligence</span></div><span class="mega-head-badge" style="background:var(--cyan-l);color:var(--cyan)">AI AGENT ACTIVE</span></div>
+          <div class="mega-body"><div class="mega-links">
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--gold-l)">📋</div><div><div class="mega-link-text">ETF Table</div><div class="mega-link-sub">Top performing ETFs</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:#fff7ed">₿</div><div><div class="mega-link-text">BTC ETF Flows</div><div class="mega-link-sub">Daily inflow/outflow</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--blue-l)">🏷️</div><div><div class="mega-link-text">Category Map</div><div class="mega-link-sub">Sector & theme ETFs</div></div></a>
+          </div></div>
+          <div class="mega-foot"><a href="#">Open BYF Dashboard →</a></div>
+        </div>
+      </li>
+      <li class="nav-item" data-menu="bonds">
+        <a href="#"><span class="dot" style="background:var(--green)"></span>Bonds <span class="arr">▼</span></a>
+        <div class="mega">
+          <div class="mega-head"><div class="mega-head-left"><span class="mega-head-icon">🏦</span><span class="mega-head-title">Bond Intelligence</span></div><span class="mega-head-badge" style="background:var(--green-l);color:var(--green)">AI AGENT ACTIVE</span></div>
+          <div class="mega-body"><div class="mega-links">
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--blue-l)">📉</div><div><div class="mega-link-text">US Yield Curve</div><div class="mega-link-sub">Treasury curve analysis</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--green-l)">🌐</div><div><div class="mega-link-text">Global 10Y</div><div class="mega-link-sub">7-country yield comparison</div></div></a>
+            <a href="#" class="mega-link"><div class="mega-link-icon" style="background:var(--gold-l)">🏢</div><div><div class="mega-link-text">Corporate Signals</div><div class="mega-link-sub">AI corporate bond picks</div></div></a>
+          </div></div>
+          <div class="mega-foot"><a href="#">Open Bonds Dashboard →</a></div>
+        </div>
+      </li>
+      <li class="nav-item"><a href="#pricing" style="color:var(--g500)">Pricing</a></li>
+    </ul>
+  </div>
+  <div class="nav-right">
+    <div class="nav-live"><div class="nav-live-dot"></divdata-i18n="nav_live">6 AGENTS LIVE</div>
+    <div class="lang-sw" id="langSw" onclick="this.classList.toggle('open')">
+      <span>🌐</span><span class="lc" id="lc">EN</span><span class="la">▼</span>
+      <div class="lang-dd" onclick="event.stopPropagation()">
+        <div class="lang-opt act" onclick="sL('en')"><span class="fl">🇬🇧</span>English<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('tr')"><span class="fl">🇹🇷</span>Türkçe<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('de')"><span class="fl">🇩🇪</span>Deutsch<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('fr')"><span class="fl">🇫🇷</span>Français<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('es')"><span class="fl">🇪🇸</span>Español<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('ar')"><span class="fl">🇸🇦</span>العربية<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('zh')"><span class="fl">🇨🇳</span>中文<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('ja')"><span class="fl">🇯🇵</span>日本語<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('ru')"><span class="fl">🇷🇺</span>Русский<span class="ck">✓</span></div>
+        <div class="lang-opt" onclick="sL('ko')"><span class="fl">🇰🇷</span>한국어<span class="ck">✓</span></div>
+      </div>
+    </div>
+    <a href="/platform" class="btn-nav" data-i18n="btn_open">Open Platform →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-inner">
+    <div class="hero-top">
+      <div class="hero-over"><span class="hero-over-line"></span><span class="hero-over-text" data-i18n="hero_over">6 AI Agents · Multi-Asset · Real-Time</span></div>
+      <h1 class="hero-h" data-i18n="hero_h">The <em>Intelligence</em> Layer Across <strong>Every Market</strong></h1>
+      <p class="hero-p" data-i18n="hero_p">Six specialized AI agents scanning Crypto, CEX, DEX, Stocks, ETFs and Bonds — delivering signals, tracking whales, scoring dips and processing news across every asset class.</p>
+      <div class="hero-btns">
+        <a href="/platform" class="btn-h1" data-i18n="btn_launch">Launch Platform <span>→</span></a>
+        <a href="#panels" class="btn-h2" data-i18n="btn_explore">Explore Live Data</a>
+      </div>
+    </div>
+
+    <!-- ═══════════ LIVE PANELS ═══════════ -->
+    <div class="panels-section" id="panels">
+      <div class="panels-head">
+        <div class="panels-title"><span class="pdot"></span><span data-i18n="panels_title">LIVE INTELLIGENCE — 6 AGENTS SCANNING</span></div>
+      </div>
+      <div class="panels-grid">
+
+        <!-- 1: CRYPTO -->
+        <div class="panel">
+          <div class="panel-bar"><div class="panel-bar-left"><span class="panel-icon">₿</span><span class="panel-name">CRYPTO</span></div><div class="panel-agent"><span class="ag-dot"></span>DipHunter AI</div></div>
+          <div class="panel-body">
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 120 68">
+                <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#eeedea" stroke-width="8" stroke-linecap="round"/>
+                <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="url(#gGrad)" stroke-width="8" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="47"/>
+                <defs><linearGradient id="gGrad" x1="0%" y1="0%" x2="100%"><stop offset="0%" stop-color="#e8432a"/><stop offset="50%" stop-color="#c49a2a"/><stop offset="100%" stop-color="#00875a"/></linearGradient></defs>
+              </svg>
+              <div class="gauge-val">70</div>
+              <div class="gauge-label">Fear & Greed — Greed</div>
+            </div>
+            <div class="mini-row"><span class="mini-label"><span class="mc" style="background:#f7931a">B</span>BTC</span><span class="mini-val">$97,420</span><span class="mini-chg dn">−3.2%</span><span class="mini-badge buy">91 DIP</span></div>
+            <div class="mini-row"><span class="mini-label"><span class="mc" style="background:#627eea">E</span>ETH</span><span class="mini-val">$3,241</span><span class="mini-chg dn">−4.1%</span><span class="mini-badge buy">87 DIP</span></div>
+            <div class="mini-row"><span class="mini-label"><span class="mc" style="background:linear-gradient(135deg,#9945ff,#14f195)">S</span>SOL</span><span class="mini-val">$168.40</span><span class="mini-chg dn">−1.8%</span><span class="mini-badge hold">62</span></div>
+          </div>
+          <div class="panel-foot"><a href="#"data-i18n="dash_crypto">Full Crypto Dashboard →</a></div>
+        </div>
+
+        <!-- 2: CEX -->
+        <div class="panel">
+          <div class="panel-bar"><div class="panel-bar-left"><span class="panel-icon">⚡</span><span class="panel-name">CEX</span></div><div class="panel-agent"><span class="ag-dot"></span>ExchangeRadar AI</div></div>
+          <div class="panel-body">
+            <div style="font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:8px">TOP GAINERS 24H</div>
+            <div class="mini-row"><span class="mini-label" style="font-size:14px">🔥 PEPE</span><span class="mini-val">$0.0000142</span><span class="mini-chg up">+28.4%</span></div>
+            <div class="mini-row"><span class="mini-label" style="font-size:14px">🔥 WIF</span><span class="mini-val">$2.84</span><span class="mini-chg up">+19.2%</span></div>
+            <div class="mini-row"><span class="mini-label" style="font-size:14px">🔥 ONDO</span><span class="mini-val">$1.62</span><span class="mini-chg up">+14.7%</span></div>
+            <div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:6px">FUNDING RATE</div>
+            <div class="mini-row"><span class="mini-label">BTC Perp</span><span class="mini-chg up" style="font-size:14px">+0.012%</span></div>
+            <div class="mini-row"><span class="mini-label">ETH Perp</span><span class="mini-chg dn" style="font-size:14px">−0.004%</span></div>
+          </div>
+          <div class="panel-foot"><a href="#"data-i18n="dash_cex">Full CEX Dashboard →</a></div>
+        </div>
+
+        <!-- 3: DEX -->
+        <div class="panel">
+          <div class="panel-bar"><div class="panel-bar-left"><span class="panel-icon">🔗</span><span class="panel-name">DEX</span></div><div class="panel-agent"><span class="ag-dot"></span>DeFiScout AI</div></div>
+          <div class="panel-body">
+            <div style="font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:8px">CHAIN TVL DISTRIBUTION</div>
+            <div class="bar-row"><span class="bar-label">Ethereum</span><div class="bar-track"><div class="bar-fill" style="width:58%;background:var(--blue)"></div></div><span class="bar-val">$48.2B</span></div>
+            <div class="bar-row"><span class="bar-label">Solana</span><div class="bar-track"><div class="bar-fill" style="width:14%;background:linear-gradient(90deg,#9945ff,#14f195)"></div></div><span class="bar-val">$11.8B</span></div>
+            <div class="bar-row"><span class="bar-label">BSC</span><div class="bar-track"><div class="bar-fill" style="width:9%;background:var(--gold)"></div></div><span class="bar-val">$7.4B</span></div>
+            <div class="bar-row"><span class="bar-label">Arbitrum</span><div class="bar-track"><div class="bar-fill" style="width:7%;background:var(--cyan)"></div></div><span class="bar-val">$5.8B</span></div>
+            <div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:6px">NEW LAUNCHES</div>
+            <div class="mini-row"><span class="mini-label">🆕 $AXIOM</span><span class="mini-badge new">NEW</span><span class="mini-chg up">+840%</span></div>
+            <div class="mini-row"><span class="mini-label">🆕 $LUNAR</span><span class="mini-badge new">NEW</span><span class="mini-chg up">+320%</span></div>
+          </div>
+          <div class="panel-foot"><a href="#"data-i18n="dash_dex">Full DEX Dashboard →</a></div>
+        </div>
+
+        <!-- 4: STOCKS -->
+        <div class="panel">
+          <div class="panel-bar"><div class="panel-bar-left"><span class="panel-icon">📊</span><span class="panel-name">STOCKS</span></div><div class="panel-agent"><span class="ag-dot"></span>EquityPulse AI</div></div>
+          <div class="panel-body">
+            <div style="font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:8px">GLOBAL INDICES</div>
+            <div class="mini-row"><span class="mini-label">🇺🇸 S&P 500</span><span class="mini-val">6,124</span><span class="mini-chg up">+0.42%</span></div>
+            <div class="mini-row"><span class="mini-label">🇺🇸 NASDAQ</span><span class="mini-val">19,842</span><span class="mini-chg up">+0.68%</span></div>
+            <div class="mini-row"><span class="mini-label">🇹🇷 BIST 100</span><span class="mini-val">10,248</span><span class="mini-chg dn">−0.31%</span></div>
+            <div class="mini-row"><span class="mini-label">🇩🇪 DAX</span><span class="mini-val">22,614</span><span class="mini-chg up">+0.24%</span></div>
+            <div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:6px">AI SIGNALS</div>
+            <div class="mini-row"><span class="mini-label">NVDA</span><span class="mini-badge buy">▲ BUY 89%</span></div>
+            <div class="mini-row"><span class="mini-label">THYAO</span><span class="mini-badge buy">▲ BUY 82%</span></div>
+          </div>
+          <div class="panel-foot"><a href="#"data-i18n="dash_stocks">Full Stocks Dashboard →</a></div>
+        </div>
+
+        <!-- 5: BYF / ETF -->
+        <div class="panel">
+          <div class="panel-bar"><div class="panel-bar-left"><span class="panel-icon">🧩</span><span class="panel-name">BYF / ETF</span></div><div class="panel-agent"><span class="ag-dot"></span>FundTracker AI</div></div>
+          <div class="panel-body">
+            <div style="font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:8px">BITCOIN ETF DAILY FLOWS</div>
+            <div class="mini-row"><span class="mini-label">IBIT (BlackRock)</span><span class="mini-chg up" style="font-size:14px">+$284M</span></div>
+            <div class="mini-row"><span class="mini-label">FBTC (Fidelity)</span><span class="mini-chg up" style="font-size:14px">+$142M</span></div>
+            <div class="mini-row"><span class="mini-label">GBTC (Grayscale)</span><span class="mini-chg dn" style="font-size:14px">−$38M</span></div>
+            <div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:6px">TOP ETFs TODAY</div>
+            <div class="mini-row"><span class="mini-label">QQQ</span><span class="mini-val">$528.40</span><span class="mini-chg up">+0.8%</span></div>
+            <div class="mini-row"><span class="mini-label">GLD</span><span class="mini-val">$244.12</span><span class="mini-chg up">+0.4%</span></div>
+          </div>
+          <div class="panel-foot"><a href="#"data-i18n="dash_byf">Full BYF Dashboard →</a></div>
+        </div>
+
+        <!-- 6: BONDS -->
+        <div class="panel">
+          <div class="panel-bar"><div class="panel-bar-left"><span class="panel-icon">🏦</span><span class="panel-name">BONDS</span></div><div class="panel-agent"><span class="ag-dot"></span>YieldSentinel AI</div></div>
+          <div class="panel-body">
+            <div style="font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:8px">GLOBAL 10Y YIELDS</div>
+            <div class="mini-row"><span class="mini-label">🇺🇸 US 10Y</span><span class="mini-val">4.52%</span><span class="mini-chg up">+2bp</span></div>
+            <div class="mini-row"><span class="mini-label">🇩🇪 Bund 10Y</span><span class="mini-val">2.48%</span><span class="mini-chg dn">−1bp</span></div>
+            <div class="mini-row"><span class="mini-label">🇬🇧 Gilt 10Y</span><span class="mini-val">4.61%</span><span class="mini-chg up">+3bp</span></div>
+            <div class="mini-row"><span class="mini-label">🇯🇵 JGB 10Y</span><span class="mini-val">1.08%</span><span class="mini-chg up">+1bp</span></div>
+            <div class="mini-row"><span class="mini-label">🇹🇷 TGOV 10Y</span><span class="mini-val">26.8%</span><span class="mini-chg dn">−12bp</span></div>
+            <div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--g400);letter-spacing:1px;margin-bottom:4px">US YIELD CURVE</div>
+            <div style="font-size:14px;color:var(--red);font-weight:600">⚠ Inverted (2Y > 10Y) — Recession signal</div>
+          </div>
+          <div class="panel-foot"><a href="#"data-i18n="dash_bonds">Full Bonds Dashboard →</a></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <span class="ticker-item">BTC <span class="dn">$97,420 ▼</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">S&P 500 <span class="up">6,124 ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">EUR/USD <span class="up">1.0842 ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">XAU <span class="up">$2,648 ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item"><span class="hi">🐋 WHALE</span> +142 BTC</span><span class="ticker-sep">·</span>
+    <span class="ticker-item">BIST 100 <span class="dn">10,248 ▼</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">US 10Y <span class="up">4.52% ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item"><span class="hi">⚡ DIP</span> BTC 91/100</span><span class="ticker-sep">·</span>
+    <span class="ticker-item">IBIT <span class="up">+$284M ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">SOL <span class="dn">$168.40 ▼</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">BTC <span class="dn">$97,420 ▼</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">S&P 500 <span class="up">6,124 ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">EUR/USD <span class="up">1.0842 ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">XAU <span class="up">$2,648 ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item"><span class="hi">🐋 WHALE</span> +142 BTC</span><span class="ticker-sep">·</span>
+    <span class="ticker-item">BIST 100 <span class="dn">10,248 ▼</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">US 10Y <span class="up">4.52% ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item"><span class="hi">⚡ DIP</span> BTC 91/100</span><span class="ticker-sep">·</span>
+    <span class="ticker-item">IBIT <span class="up">+$284M ▲</span></span><span class="ticker-sep">·</span>
+    <span class="ticker-item">SOL <span class="dn">$168.40 ▼</span></span>
+  </div>
+</div>
+
+<!-- AGENTS -->
+<section class="section" id="agents">
+  <div class="ctn">
+    <div class="sec-head rv"><div class="sec-tag" data-i18n="agents_tag">AI Architecture</div><h2 class="sec-title" data-i18n="agents_title">Six Specialized <em>AI Agents</em></h2><p class="sec-sub" data-i18n="agents_sub">Each agent scans its domain 24/7 — web, social media, on-chain, exchanges — and delivers actionable intelligence.</p></div>
+    <div class="agents-grid">
+      <div class="ag-card rv rv-d1" data-color="blue"><div class="ag-num">AGENT — 01</div><div class="ag-ic" style="background:var(--blue-l)">₿</div><h3 class="ag-nm">CryptoSense</h3><div class="ag-rl">Crypto Intelligence</div><p class="ag-ds">DIP SCORE™, Fear&Greed gauge, market heat map, cap distribution. Scans 300+ coins every 500ms across all major exchanges.</p><div class="ag-tags"><span class="ag-tg">DIP SCORE™</span><span class="ag-tg">Fear & Greed</span><span class="ag-tg">Heat Map</span><span class="ag-tg">300+ Coins</span></div></div>
+      <div class="ag-card rv rv-d2" data-color="gold"><div class="ag-num">AGENT — 02</div><div class="ag-ic" style="background:var(--gold-l)">⚡</div><h3 class="ag-nm">ExchangeRadar</h3><div class="ag-rl">CEX Intelligence</div><p class="ag-ds">Order book depth (Binance), exchange volume charts, funding rates, top gainers/losers. Real-time CEX data fusion.</p><div class="ag-tags"><span class="ag-tg">Order Book</span><span class="ag-tg">Funding Rate</span><span class="ag-tg">Volume</span><span class="ag-tg">Top Gainers</span></div></div>
+      <div class="ag-card rv rv-d3" data-color="purple"><div class="ag-num">AGENT — 03</div><div class="ag-ic" style="background:var(--purple-l)">🔗</div><h3 class="ag-nm">DeFiScout</h3><div class="ag-rl">DEX Intelligence</div><p class="ag-ds">Top APY pools, chain TVL distribution, new token launches, whale DEX swaps. Multi-chain DeFi coverage.</p><div class="ag-tags"><span class="ag-tg">APY Pools</span><span class="ag-tg">TVL Tracking</span><span class="ag-tg">New Launches</span><span class="ag-tg">Multi-Chain</span></div></div>
+      <div class="ag-card rv rv-d4" data-color="blue"><div class="ag-num">AGENT — 04</div><div class="ag-ic" style="background:var(--blue-l)">📊</div><h3 class="ag-nm">EquityPulse</h3><div class="ag-rl">Stock Intelligence</div><p class="ag-ds">Global stock AI signals, sector performance breakdown, BIST + major indices, earnings calendar with NLP impact scoring.</p><div class="ag-tags"><span class="ag-tg">AI Signals</span><span class="ag-tg">BIST</span><span class="ag-tg">Sector Perf</span><span class="ag-tg">Global Indices</span></div></div>
+      <div class="ag-card rv rv-d5" data-color="cyan"><div class="ag-num">AGENT — 05</div><div class="ag-ic" style="background:var(--cyan-l)">🧩</div><h3 class="ag-nm">FundTracker</h3><div class="ag-rl">ETF / Fund Intelligence</div><p class="ag-ds">ETF performance tables, Bitcoin ETF daily flow tracking, category & theme distribution analysis.</p><div class="ag-tags"><span class="ag-tg">ETF Table</span><span class="ag-tg">BTC ETF Flows</span><span class="ag-tg">Category Map</span><span class="ag-tg">Fund Flows</span></div></div>
+      <div class="ag-card rv rv-d6" data-color="green"><div class="ag-num">AGENT — 06</div><div class="ag-ic" style="background:var(--green-l)">🏦</div><h3 class="ag-nm">YieldSentinel</h3><div class="ag-rl">Bond Intelligence</div><p class="ag-ds">US yield curve analysis, 7-country 10Y yield comparison, corporate bond AI signals, central bank rate tracking.</p><div class="ag-tags"><span class="ag-tg">Yield Curve</span><span class="ag-tg">Global 10Y</span><span class="ag-tg">Corp Signals</span><span class="ag-tg">CB Rates</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section alt" id="pricing">
+  <div class="ctn">
+    <div class="sec-head rv"><div class="sec-tag" data-i18n="pricing_tag">Plans</div><h2 class="sec-title" data-i18n="pricing_title">Institutional-Grade <em>Pricing</em></h2><p class="sec-sub" data-i18n="pricing_sub">Start with Explorer. Upgrade when you need the full 6-agent arsenal.</p></div>
+    <div class="bill-tog rv"><span class="bill-lbl act" id="mL" onclick="sB('m')" data-i18n="monthly">Monthly</span><div class="tog-track" id="bT" onclick="tB()"><div class="tog-thumb"></div></div><span class="bill-lbl" id="aL" onclick="sB('a')" data-i18n="annual">Annual</span><span class="ann-save">SAVE 20%</span></div>
+    <div class="pricing-grid">
+      <div class="pc rv rv-d1">
+        <div class="pc-tier">Explorer</div>
+        <div class="pc-pr"><span class="pc-cur">$</span><span class="pc-val" data-m="0" data-a="0">0</span></div>
+        <div class="pc-per">Forever free</div>
+        <p class="pc-desc">CryptoSense agent only. Top 20 coins, basic DIP SCORE™.</p>
+        <ul class="pc-feats">
+          <li><span class="ic" style="color:var(--green)">✓</span>CryptoSense AI (top 20)</li>
+          <li><span class="ic" style="color:var(--green)">✓</span>Telegram alerts</li>
+          <li><span class="ic" style="color:var(--green)">✓</span>3 alert rules</li>
+          <li class="off"><span class="ic">✗</span>CEX, DEX, Stock agents</li>
+          <li class="off"><span class="ic">✗</span>BYF & Bond agents</li>
+        </ul>
+        <a href="/platform" class="pc-btn out">Start Free</a>
+      </div>
+      <div class="pc pop rv rv-d2">
+        <div class="pop-b">MOST POPULAR</div>
+        <div class="pc-tier">Operator</div>
+        <div class="pc-pr"><span class="pc-cur">$</span><span class="pc-val" data-m="149" data-a="119">149</span></div>
+        <div class="pc-per pp">per month</div>
+        <p class="pc-desc">All 6 AI agents. Crypto, CEX, DEX, Stocks, ETFs, Bonds — full multi-asset intelligence.</p>
+        <ul class="pc-feats">
+          <li><span class="ic" style="color:var(--blue)">✓</span>All 6 AI Agents</li>
+          <li><span class="ic" style="color:var(--blue)">✓</span>300+ crypto + 85+ forex</li>
+          <li><span class="ic" style="color:var(--blue)">✓</span>Global stocks + BIST</li>
+          <li><span class="ic" style="color:var(--blue)">✓</span>ETF flows + Bond yields</li>
+          <li><span class="ic" style="color:var(--blue)">✓</span>Unlimited rules, 5 channels</li>
+          <li><span class="ic" style="color:var(--blue)">✓</span>Prop Firm Challenge Mode</li>
+        </ul>
+        <a href="/platform" class="pc-btn dark">Get Operator →</a>
+      </div>
+      <div class="pc rv rv-d3">
+        <div class="pc-tier">Command</div>
+        <div class="pc-pr"><span class="pc-cur">$</span><span class="pc-val" data-m="499" data-a="399">499</span></div>
+        <div class="pc-per pp">per month · up to 10 seats</div>
+        <p class="pc-desc">For trading desks, hedge funds, prop firms. Priority infra + API + white-label.</p>
+        <ul class="pc-feats">
+          <li><span class="ic" style="color:var(--green)">✓</span>Everything in Operator</li>
+          <li><span class="ic" style="color:var(--green)">✓</span>10 team seats</li>
+          <li><span class="ic" style="color:var(--green)">✓</span>Priority queue (&lt;200ms)</li>
+          <li><span class="ic" style="color:var(--green)">✓</span>Full REST API + Webhook</li>
+          <li><span class="ic" style="color:var(--green)">✓</span>White-label bot</li>
+          <li><span class="ic" style="color:var(--green)">✓</span>Dedicated support (1h SLA)</li>
+        </ul>
+        <a href="#" class="pc-btn out">Contact Sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta"><div class="ctn cta-in rv"><h2 class="cta-t" data-i18n="cta_t">Six Agents.<br><em>Zero Gaps.</em></h2><p class="cta-s" data-i18n="cta_s">Every dip, signal, whale move, yield shift, ETF flow — covered before you open your chart.</p><div class="cta-btns"><a href="/platform" class="btn-cw" data-i18n="btn_launch2">Launch Platform →</a><a href="#" class="btn-co" data-i18n="btn_download">Download App</a></div></div></section>
+
+<!-- FOOTER -->
+<footer class="footer"><div class="ctn">
+  <div class="footer-grid">
+    <div><a href="#" class="logo"><div class="logo-m">PX</div><span class="logo-t">PROPTREX</span></a><p class="footer-desc">AI-native multi-asset intelligence. 6 specialized agents monitoring Crypto, CEX, DEX, Stocks, ETFs & Bonds 24/7.</p></div>
+    <div><div class="footer-ct">Agents</div><ul class="footer-links"><li><a href="#">CryptoSense</a></li><li><a href="#">ExchangeRadar</a></li><li><a href="#">DeFiScout</a></li><li><a href="#">EquityPulse</a></li><li><a href="#">FundTracker</a></li><li><a href="#">YieldSentinel</a></li></ul></div>
+    <div><div class="footer-ct">Resources</div><ul class="footer-links"><li><a href="#">Documentation</a></li><li><a href="#">API Reference</a></li><li><a href="#">Backtesting</a></li><li><a href="#">Changelog</a></li></ul></div>
+    <div><div class="footer-ct">Company</div><ul class="footer-links"><li><a href="#">About</a></li><li><a href="#">Blog</a></li><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li></ul></div>
+  </div>
+  <div class="footer-bot"><div class="footer-copy">© 2025 PROPTREX · proptrex.com</div><div class="footer-legal">⚠ Not financial advice. Trading involves significant risk. DYOR.</div></div>
+</div></footer>
+
+<script>
+// Nav scroll
+const nav=document.getElementById('mainNav');
+window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>40));
+
+// Mega menu
+document.querySelectorAll('.nav-item[data-menu]').forEach(item=>{
+  item.addEventListener('mouseenter',()=>{document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('open'));item.classList.add('open');});
+  item.addEventListener('mouseleave',()=>item.classList.remove('open'));
+});
+
+// Lang — Full i18n system
+const i18n={
+  en:{hero_over:"6 AI Agents · Multi-Asset · Real-Time",hero_h:'The <em>Intelligence</em> Layer Across <strong>Every Market</strong>',hero_p:"Six specialized AI agents scanning Crypto, CEX, DEX, Stocks, ETFs and Bonds — delivering signals, tracking whales, scoring dips and processing news across every asset class.",btn_launch:"Launch Platform →",btn_explore:"Explore Live Data",btn_open:"Open Platform →",panels_title:"LIVE INTELLIGENCE — 6 AGENTS SCANNING",agents_tag:"AI Architecture",agents_title:'Six Specialized <em>AI Agents</em>',agents_sub:"Each agent scans its domain 24/7 — web, social media, on-chain, exchanges — and delivers actionable intelligence.",pricing_tag:"Plans",pricing_title:'Institutional-Grade <em>Pricing</em>',pricing_sub:"Start with Explorer. Upgrade when you need the full 6-agent arsenal.",cta_t:'Six Agents.<br><em>Zero Gaps.</em>',cta_s:"Every dip, signal, whale move, yield shift, ETF flow — covered before you open your chart.",btn_launch2:"Launch Platform →",btn_download:"Download App",dash_crypto:"Full Crypto Dashboard →",dash_cex:"Full CEX Dashboard →",dash_dex:"Full DEX Dashboard →",dash_stocks:"Full Stocks Dashboard →",dash_byf:"Full BYF Dashboard →",dash_bonds:"Full Bonds Dashboard →",nav_live:"6 AGENTS LIVE",monthly:"Monthly",annual:"Annual"},
+  tr:{hero_over:"6 AI Ajan · Çoklu Varlık · Gerçek Zamanlı",hero_h:'Tüm Piyasalardaki <em>Zeka</em> <strong>Katmanı</strong>',hero_p:"Kripto, CEX, DEX, Hisse, ETF ve Tahvil piyasalarını tarayan altı özel AI ajanı — sinyal üretir, balinaları takip eder, dip fırsatlarını skorlar ve haberleri işler.",btn_launch:"Platforma Gir →",btn_explore:"Canlı Verileri İncele",btn_open:"Platforma Gir →",panels_title:"CANLI İSTİHBARAT — 6 AJAN TARIYOR",agents_tag:"AI Mimarisi",agents_title:'Altı Özel <em>AI Ajanı</em>',agents_sub:"Her ajan kendi alanını 7/24 tarar — web, sosyal medya, on-chain, borsalar — ve işe yarar istihbarat sunar.",pricing_tag:"Planlar",pricing_title:'Kurumsal Düzey <em>Fiyatlandırma</em>',pricing_sub:"Explorer ile başlayın. 6 ajanlı tam arsenale ihtiyaç duyduğunuzda yükseltin.",cta_t:'Altı Ajan.<br><em>Sıfır Boşluk.</em>',cta_s:"Her dip, sinyal, balina hareketi, getiri değişimi, ETF akışı — grafiğinizi açmadan önce hazır.",btn_launch2:"Platforma Gir →",btn_download:"Uygulamayı İndir",dash_crypto:"Kripto Paneli →",dash_cex:"CEX Paneli →",dash_dex:"DEX Paneli →",dash_stocks:"Hisse Paneli →",dash_byf:"BYF Paneli →",dash_bonds:"Tahvil Paneli →",nav_live:"6 AJAN AKTİF",monthly:"Aylık",annual:"Yıllık"},
+  de:{hero_over:"6 KI-Agenten · Multi-Asset · Echtzeit",hero_h:'Die <em>Intelligenz</em>-Schicht für <strong>jeden Markt</strong>',hero_p:"Sechs spezialisierte KI-Agenten scannen Krypto, CEX, DEX, Aktien, ETFs und Anleihen — liefern Signale, verfolgen Wale und bewerten Dips.",btn_launch:"Plattform starten →",btn_explore:"Live-Daten erkunden",btn_open:"Plattform öffnen →",panels_title:"LIVE-INTELLIGENCE — 6 AGENTEN SCANNEN",agents_tag:"KI-Architektur",agents_title:'Sechs spezialisierte <em>KI-Agenten</em>',agents_sub:"Jeder Agent scannt seinen Bereich rund um die Uhr und liefert verwertbare Erkenntnisse.",pricing_tag:"Pläne",pricing_title:'Institutionelle <em>Preise</em>',pricing_sub:"Starten Sie mit Explorer. Upgraden Sie bei Bedarf.",cta_t:'Sechs Agenten.<br><em>Keine Lücken.</em>',cta_s:"Jeder Dip, jedes Signal, jede Wal-Bewegung — abgedeckt bevor Sie Ihren Chart öffnen.",btn_launch2:"Plattform starten →",btn_download:"App herunterladen",dash_crypto:"Krypto-Dashboard →",dash_cex:"CEX-Dashboard →",dash_dex:"DEX-Dashboard →",dash_stocks:"Aktien-Dashboard →",dash_byf:"ETF-Dashboard →",dash_bonds:"Anleihen-Dashboard →",nav_live:"6 AGENTEN LIVE",monthly:"Monatlich",annual:"Jährlich"},
+  fr:{hero_over:"6 Agents IA · Multi-Actifs · Temps Réel",hero_h:'La couche d\'<em>Intelligence</em> sur <strong>chaque marché</strong>',hero_p:"Six agents IA spécialisés analysent Crypto, CEX, DEX, Actions, ETFs et Obligations — signaux, suivi de baleines et scoring de dips.",btn_launch:"Lancer la Plateforme →",btn_explore:"Explorer les Données",btn_open:"Ouvrir la Plateforme →",panels_title:"INTELLIGENCE EN DIRECT — 6 AGENTS EN ANALYSE",agents_tag:"Architecture IA",agents_title:'Six Agents <em>IA Spécialisés</em>',agents_sub:"Chaque agent analyse son domaine 24h/24 et fournit des renseignements exploitables.",pricing_tag:"Plans",pricing_title:'Tarification <em>Institutionnelle</em>',pricing_sub:"Commencez avec Explorer. Montez en gamme quand vous le souhaitez.",cta_t:'Six Agents.<br><em>Zéro Lacune.</em>',cta_s:"Chaque dip, signal, mouvement de baleine — couvert avant d'ouvrir votre graphique.",btn_launch2:"Lancer la Plateforme →",btn_download:"Télécharger l'App",dash_crypto:"Dashboard Crypto →",dash_cex:"Dashboard CEX →",dash_dex:"Dashboard DEX →",dash_stocks:"Dashboard Actions →",dash_byf:"Dashboard ETF →",dash_bonds:"Dashboard Obligations →",nav_live:"6 AGENTS EN LIGNE",monthly:"Mensuel",annual:"Annuel"},
+  es:{hero_over:"6 Agentes IA · Multi-Activo · Tiempo Real",hero_h:'La capa de <em>Inteligencia</em> en <strong>cada mercado</strong>',hero_p:"Seis agentes IA especializados escanean Cripto, CEX, DEX, Acciones, ETFs y Bonos — señales, seguimiento de ballenas y puntuación de dips.",btn_launch:"Lanzar Plataforma →",btn_explore:"Explorar Datos",btn_open:"Abrir Plataforma →",panels_title:"INTELIGENCIA EN VIVO — 6 AGENTES ESCANEANDO",agents_tag:"Arquitectura IA",agents_title:'Seis Agentes <em>IA Especializados</em>',agents_sub:"Cada agente escanea su dominio 24/7 y entrega inteligencia accionable.",pricing_tag:"Planes",pricing_title:'Precios de <em>Nivel Institucional</em>',pricing_sub:"Empiece con Explorer. Actualice cuando lo necesite.",cta_t:'Seis Agentes.<br><em>Cero Brechas.</em>',cta_s:"Cada dip, señal, movimiento de ballena — cubierto antes de abrir su gráfico.",btn_launch2:"Lanzar Plataforma →",btn_download:"Descargar App",dash_crypto:"Panel Cripto →",dash_cex:"Panel CEX →",dash_dex:"Panel DEX →",dash_stocks:"Panel Acciones →",dash_byf:"Panel ETF →",dash_bonds:"Panel Bonos →",nav_live:"6 AGENTES ACTIVOS",monthly:"Mensual",annual:"Anual"},
+  ar:{hero_over:"6 وكلاء ذكاء اصطناعي · أصول متعددة · وقت حقيقي",hero_h:'طبقة <em>الذكاء</em> عبر <strong>كل سوق</strong>',hero_p:"ستة وكلاء ذكاء اصطناعي متخصصون يفحصون العملات المشفرة والأسهم والسندات — يقدمون إشارات ويتتبعون الحيتان.",btn_launch:"إطلاق المنصة →",btn_explore:"استكشاف البيانات",btn_open:"فتح المنصة →",panels_title:"استخبارات مباشرة — 6 وكلاء يفحصون",agents_tag:"بنية الذكاء الاصطناعي",agents_title:'ستة وكلاء <em>ذكاء اصطناعي</em>',agents_sub:"كل وكيل يفحص مجاله على مدار الساعة ويقدم معلومات قابلة للتنفيذ.",pricing_tag:"الخطط",pricing_title:'تسعير <em>مؤسسي</em>',pricing_sub:"ابدأ مع Explorer. قم بالترقية عند الحاجة.",cta_t:'ستة وكلاء.<br><em>صفر فجوات.</em>',cta_s:"كل انخفاض وإشارة وحركة حوت — مغطاة قبل فتح الرسم البياني.",btn_launch2:"إطلاق المنصة →",btn_download:"تحميل التطبيق",dash_crypto:"لوحة الكريبتو →",dash_cex:"لوحة CEX →",dash_dex:"لوحة DEX →",dash_stocks:"لوحة الأسهم →",dash_byf:"لوحة ETF →",dash_bonds:"لوحة السندات →",nav_live:"6 وكلاء نشطون",monthly:"شهري",annual:"سنوي"},
+  zh:{hero_over:"6个AI代理 · 多资产 · 实时",hero_h:'跨越<strong>每个市场</strong>的<em>智能</em>层',hero_p:"六个专业AI代理扫描加密货币、CEX、DEX、股票、ETF和债券——提供信号、追踪鲸鱼、评分低谷。",btn_launch:"启动平台 →",btn_explore:"浏览实时数据",btn_open:"打开平台 →",panels_title:"实时情报 — 6个代理正在扫描",agents_tag:"AI架构",agents_title:'六个专业<em>AI代理</em>',agents_sub:"每个代理24/7扫描其领域，提供可操作的情报。",pricing_tag:"方案",pricing_title:'机构级<em>定价</em>',pricing_sub:"从Explorer开始。需要时升级。",cta_t:'六个代理。<br><em>零盲区。</em>',cta_s:"每一个低谷、信号、鲸鱼动向——在您打开图表之前就已覆盖。",btn_launch2:"启动平台 →",btn_download:"下载应用",dash_crypto:"加密仪表板 →",dash_cex:"CEX仪表板 →",dash_dex:"DEX仪表板 →",dash_stocks:"股票仪表板 →",dash_byf:"ETF仪表板 →",dash_bonds:"债券仪表板 →",nav_live:"6个代理在线",monthly:"月付",annual:"年付"},
+  ja:{hero_over:"6つのAIエージェント · マルチアセット · リアルタイム",hero_h:'すべての市場にわたる<em>インテリジェンス</em><strong>レイヤー</strong>',hero_p:"暗号通貨、CEX、DEX、株式、ETF、債券をスキャンする6つの専門AIエージェント。",btn_launch:"プラットフォーム起動 →",btn_explore:"ライブデータ探索",btn_open:"プラットフォーム開く →",panels_title:"ライブインテリジェンス — 6エージェントスキャン中",agents_tag:"AIアーキテクチャ",agents_title:'6つの専門<em>AIエージェント</em>',agents_sub:"各エージェントは24時間365日、自分の領域をスキャンし実用的なインテリジェンスを提供。",pricing_tag:"プラン",pricing_title:'機関レベルの<em>価格設定</em>',pricing_sub:"Explorerから始めましょう。必要に応じてアップグレード。",cta_t:'6つのエージェント。<br><em>ゼロギャップ。</em>',cta_s:"すべてのディップ、シグナル、クジラの動き——チャートを開く前にカバー。",btn_launch2:"プラットフォーム起動 →",btn_download:"アプリダウンロード",dash_crypto:"暗号ダッシュボード →",dash_cex:"CEXダッシュボード →",dash_dex:"DEXダッシュボード →",dash_stocks:"株式ダッシュボード →",dash_byf:"ETFダッシュボード →",dash_bonds:"債券ダッシュボード →",nav_live:"6エージェント稼働中",monthly:"月額",annual:"年額"},
+  ru:{hero_over:"6 ИИ-агентов · Мульти-актив · Реальное время",hero_h:'Слой <em>интеллекта</em> на <strong>каждом рынке</strong>',hero_p:"Шесть специализированных ИИ-агентов сканируют Крипто, CEX, DEX, Акции, ETF и Облигации.",btn_launch:"Запустить платформу →",btn_explore:"Изучить данные",btn_open:"Открыть платформу →",panels_title:"ЖИВАЯ РАЗВЕДКА — 6 АГЕНТОВ СКАНИРУЮТ",agents_tag:"Архитектура ИИ",agents_title:'Шесть специализированных <em>ИИ-агентов</em>',agents_sub:"Каждый агент сканирует свою область 24/7 и предоставляет действенную аналитику.",pricing_tag:"Тарифы",pricing_title:'<em>Институциональные</em> цены',pricing_sub:"Начните с Explorer. Обновите когда понадобится.",cta_t:'Шесть агентов.<br><em>Ноль пробелов.</em>',cta_s:"Каждый дип, сигнал, движение кита — покрыто до открытия графика.",btn_launch2:"Запустить платформу →",btn_download:"Скачать приложение",dash_crypto:"Крипто-панель →",dash_cex:"CEX-панель →",dash_dex:"DEX-панель →",dash_stocks:"Акции-панель →",dash_byf:"ETF-панель →",dash_bonds:"Облигации-панель →",nav_live:"6 АГЕНТОВ ОНЛАЙН",monthly:"Ежемесячно",annual:"Ежегодно"},
+  ko:{hero_over:"6개 AI 에이전트 · 멀티 자산 · 실시간",hero_h:'모든 시장을 아우르는 <em>인텔리전스</em> <strong>레이어</strong>',hero_p:"암호화폐, CEX, DEX, 주식, ETF, 채권을 스캔하는 6개의 전문 AI 에이전트.",btn_launch:"플랫폼 시작 →",btn_explore:"라이브 데이터 탐색",btn_open:"플랫폼 열기 →",panels_title:"라이브 인텔리전스 — 6개 에이전트 스캔 중",agents_tag:"AI 아키텍처",agents_title:'6개의 전문 <em>AI 에이전트</em>',agents_sub:"각 에이전트는 24시간 자신의 영역을 스캔하고 실행 가능한 인텔리전스를 제공합니다.",pricing_tag:"요금제",pricing_title:'기관급 <em>가격</em>',pricing_sub:"Explorer로 시작하세요. 필요할 때 업그레이드하세요.",cta_t:'6개 에이전트.<br><em>빈틈 제로.</em>',cta_s:"모든 딥, 시그널, 고래 움직임 — 차트를 열기 전에 커버됩니다.",btn_launch2:"플랫폼 시작 →",btn_download:"앱 다운로드",dash_crypto:"크립토 대시보드 →",dash_cex:"CEX 대시보드 →",dash_dex:"DEX 대시보드 →",dash_stocks:"주식 대시보드 →",dash_byf:"ETF 대시보드 →",dash_bonds:"채권 대시보드 →",nav_live:"6개 에이전트 활성",monthly:"월간",annual:"연간"}
+};
+function sL(l){
+  document.getElementById('lc').textContent=l.toUpperCase();
+  document.querySelectorAll('.lang-opt').forEach(o=>o.classList.toggle('act',o.textContent.includes({en:'English',tr:'Türkçe',de:'Deutsch',fr:'Français',es:'Español',ar:'العربية',zh:'中文',ja:'日本語',ru:'Русский',ko:'한국어'}[l]||'')));
+  document.getElementById('langSw').classList.remove('open');
+  document.documentElement.dir=l==='ar'?'rtl':'ltr';
+  document.documentElement.lang=l;document.documentElement.dataset.lang=l;
+  const t=i18n[l]||i18n.en;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(t[k])el.innerHTML=t[k];});
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.lang-sw'))document.getElementById('langSw').classList.remove('open');});
+
+// Billing
+let isA=false;
+function tB(){isA=!isA;uB();}
+function sB(t){isA=t==='a';uB();}
+function uB(){
+  document.getElementById('bT').classList.toggle('on',isA);
+  document.getElementById('mL').classList.toggle('act',!isA);
+  document.getElementById('aL').classList.toggle('act',isA);
+  document.querySelectorAll('.pc-val[data-m]').forEach(el=>el.textContent=isA?el.dataset.a:el.dataset.m);
+}
+
+// Reveal
+const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:.08,rootMargin:'0px 0px -20px 0px'});
+document.querySelectorAll('.rv').forEach(el=>obs.observe(el));
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=document.querySelector(a.getAttribute('href'));if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth'});}}));
+</script>
+</body>
+</html>
