@@ -694,7 +694,25 @@ const MOD_CEX={
   subTabs:['🏆 Spot Ranking','📊 Volume','💰 Funding Rates','📖 Order Books','💥 Liquidations','⚡ Top Gainers'],
   thead:'<tr><th></th><th>#</th><th>Exchange</th><th>Score</th><th>24h Volume</th><th>Markets</th><th>BTC Price</th><th>Funding (BTC)</th><th>Open Interest</th><th class="ai">AI Trust</th><th class="ai">AI Signal</th><th>30d Trend</th></tr>',
   data:[],
-  async fetch(){this.data=DEMO.cex},
+  async fetch(){
+    const px=async u=>{try{const r=await fetch(u);if(r.ok)return r.json()}catch{}try{const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(u));if(r.ok)return r.json()}catch{}return null};
+    const EX=[
+      {name:'Binance',sym:'BNB',bg:'#f3ba2f',trust:9.5,score:9.8,url:'https://api.binance.com/api/v3/ticker/24hr',p:d=>{const u=(d||[]).filter(t=>t.symbol.endsWith('USDT'));return{vol:u.reduce((a,t)=>a+(+t.quoteVolume||0),0),mk:u.length,btc:+(u.find(t=>t.symbol==='BTCUSDT')||{}).lastPrice||0}}},
+      {name:'Bybit',sym:'BYB',bg:'#f7a600',trust:8.2,score:8.4,url:'https://api.bybit.com/v5/market/tickers?category=spot',p:d=>{const u=(d?.result?.list||[]).filter(t=>t.symbol.endsWith('USDT'));return{vol:u.reduce((a,t)=>a+(+t.turnover24h||0),0),mk:u.length,btc:+(u.find(t=>t.symbol==='BTCUSDT')||{}).lastPrice||0}}},
+      {name:'OKX',sym:'OKX',bg:'#000',trust:8.0,score:8.1,url:'https://www.okx.com/api/v5/market/tickers?instType=SPOT',p:d=>{const u=(d?.data||[]).filter(t=>t.instId.endsWith('-USDT'));return{vol:u.reduce((a,t)=>a+(+t.volCcy24h||0),0),mk:u.length,btc:+(u.find(t=>t.instId==='BTC-USDT')||{}).last||0}}},
+      {name:'Gate.io',sym:'GATE',bg:'#2354e6',trust:6.2,score:6.5,url:'https://api.gateio.ws/api/v4/spot/tickers',px:1,p:d=>{const u=(d||[]).filter(t=>t.currency_pair?.endsWith('_USDT'));return{vol:u.reduce((a,t)=>a+(+t.quote_volume||0),0),mk:u.length,btc:+(u.find(t=>t.currency_pair==='BTC_USDT')||{}).last||0}}},
+      {name:'MEXC',sym:'MX',bg:'#1972e2',trust:5.8,score:6.2,url:'https://api.mexc.com/api/v3/ticker/24hr',px:1,p:d=>{const u=(d||[]).filter(t=>t.symbol?.endsWith('USDT'));return{vol:u.reduce((a,t)=>a+(+t.quoteVolume||0),0),mk:u.length,btc:+(u.find(t=>t.symbol==='BTCUSDT')||{}).lastPrice||0}}},
+      {name:'Bitget',sym:'BGB',bg:'#00d4aa',trust:7.2,score:7.0,url:'https://api.bitget.com/api/v2/spot/market/tickers',px:1,p:d=>{const u=(d?.data||[]).filter(t=>t.symbol?.endsWith('USDT'));return{vol:u.reduce((a,t)=>a+(+t.quoteVolume||0),0),mk:u.length,btc:+(u.find(t=>t.symbol==='BTCUSDT')||{}).lastPr||0}}},
+    ];
+    let fr=0.012;try{const fd=await px('https://fapi.binance.com/fapi/v1/premiumIndex');if(fd){const b=fd.find(t=>t.symbol==='BTCUSDT');if(b)fr=+(+b.lastFundingRate*100).toFixed(3)}}catch{}
+    const res=[];
+    await Promise.allSettled(EX.map(async ex=>{try{
+      const d=ex.px?await px(ex.url):await(await fetch(ex.url)).json();const r=ex.p(d);if(!r.vol)return;
+      const sg=r.vol>5e9?'STRONG':r.vol>1e9?'GOOD':r.vol>5e8?'OK':'LOW';
+      res.push({name:ex.name,sym:ex.sym,score:ex.score,vol:r.vol,markets:r.mk,btcPrice:r.btc,funding:fr,oi:r.vol*0.4,trust:ex.trust,bg:ex.bg,d30:rand(-2,5),sig:sg,sigC:sg==='STRONG'||sg==='GOOD'?'buy':'hold',tv:ex.name==='Binance'?'BINANCE:BTCUSDT':ex.name==='Bybit'?'BYBIT:BTCUSDT':ex.name==='OKX'?'OKX:BTCUSDT':'',type:'cex',spark:mkSpark(50+ex.score*4,0.04)});
+    }catch{}}));
+    this.data=res.length>2?res.sort((a,b)=>b.vol-a.vol):DEMO.cex;
+  },
   renderRow(c,i){const sp=sparkPath(c.spark);const sc=c.d30>=0?'var(--green)':'var(--red)';
     return`<tr onclick="openModal('${i}')"><td><span class="star" onclick="event.stopPropagation();this.classList.toggle('on')">☆</span></td><td class="rnk">${i+1}</td><td><div class="ac"><div class="ac-logo" style="background:${c.bg}">${c.sym[0]}</div><div><div class="ac-n">${c.name}</div><div class="ac-s">${c.sym}</div></div></div></td><td><span class="bdg" style="background:var(--greenL);color:var(--green)">${c.score}/10</span></td><td class="mc">$${fmtK(c.vol)}</td><td class="vo">${c.markets}</td><td class="pr">$${fmtP(c.btcPrice)}</td><td><span class="pc ${c.funding>=0?'up':'dn'}">${c.funding>=0?'+':''}${c.funding}%</span></td><td class="mc">$${fmtK(c.oi)}</td><td class="ai"><span class="dip ${c.trust>=8?'h':c.trust>=6?'m':'l'}">${c.trust}/10</span></td><td class="ai"><span class="sig ${c.sigC}">▲ ${c.sig}</span></td><td><div class="spk"><svg viewBox="0 0 100 28"><path d="${sp}" fill="none" stroke="${sc}" stroke-width="1.5"/></svg></div></td></tr>`},
   sidebar(){return`<div class="ai-c"><div class="ai-c-i">⚡</div><div class="ai-c-t">ExchangeRadar AI</div><div class="ai-c-s">Order flow, funding rates, exchange health analysis.</div>${langBtns()}<div class="ai-c-inp"><input class="ai-ph" data-aicat="cex" placeholder="${LANGS[currentLang].cexPh}" onkeydown="if(event.key==='Enter')handleAiQuery(this)"><button class="snd" onclick="handleAiQuery(this)">→</button></div></div>
@@ -710,9 +728,24 @@ const MOD_DEX={
   subTabs:['🔒 TVL Ranking','🌊 Top Pools','🆕 New Tokens','🔥 Trending','🐋 Whale Swaps','⛓️ By Chain'],
   thead:'<tr><th></th><th>#</th><th>Protocol / Pool</th><th>Chain</th><th>TVL</th><th>24h Volume</th><th>APY</th><th>24h Change</th><th>7d Change</th><th class="ai">AI Score</th><th class="ai">AI Signal</th><th>7 Days</th></tr>',
   data:[],
-  async fetch(){this.data=DEMO.dex},
+  async fetch(){
+    const CC={Ethereum:{bg:'var(--blueL)',c:'var(--blue)'},Solana:{bg:'var(--purpleL)',c:'var(--purple)'},BSC:{bg:'var(--goldL)',c:'var(--gold)'},Arbitrum:{bg:'var(--cyanL)',c:'var(--cyan)'},Base:{bg:'var(--blueL)',c:'var(--blue)'},Optimism:{bg:'var(--redL)',c:'var(--red)'},Polygon:{bg:'var(--purpleL)',c:'var(--purple)'},Avalanche:{bg:'var(--redL)',c:'var(--red)'},Tron:{bg:'var(--redL)',c:'var(--red)'}};
+    try{
+      const [pR,yR]=await Promise.allSettled([fetch('https://api.llama.fi/protocols').then(r=>r.json()),fetch('https://yields.llama.fi/pools').then(r=>r.json())]);
+      const protos=(pR.status==='fulfilled'?pR.value:[]).filter(p=>p.category==='Dexes'||p.category==='Lending'||p.category==='Liquid Staking').sort((a,b)=>(b.tvl||0)-(a.tvl||0)).slice(0,20);
+      const pools=(yR.status==='fulfilled'?yR.value?.data||[]:[]).filter(p=>p.tvlUsd>1e6&&p.apy>0).sort((a,b)=>b.tvlUsd-a.tvlUsd).slice(0,30);
+      const m=[];protos.forEach(p=>{const ch=p.chain||p.chains?.[0]||'Multi';const cc=CC[ch]||{bg:'var(--bg3)',c:'var(--ink4)'};const pool=pools.find(y=>y.project===p.slug);
+        const item={name:p.name,sym:p.symbol||p.slug?.toUpperCase()||'?',chain:ch,chainBg:cc.bg,chainC:cc.c,tvl:p.tvl||0,vol:p.change_1d?Math.abs(p.tvl*p.change_1d/100):rand(1e6,5e8),apy:pool?+pool.apy.toFixed(1):+rand(2,25).toFixed(1),h24:p.change_1d||0,d7:p.change_7d||0,bg:'transparent',img:p.logo,type:'dex',tv:'',spark:mkSpark(p.tvl/1e9||1,0.05)};
+        item.dip=dipScore(item);const s=aiSig(item.dip,item.h24);item.sig=s.t+' '+s.p+'%';item.sigC=s.c;m.push(item)});
+      this.data=m.length>0?m:DEMO.dex;
+      // Update sidebar TVL
+      try{const chains=await(await fetch('https://api.llama.fi/v2/chains')).json();
+        const top5=chains.sort((a,b)=>(b.tvl||0)-(a.tvl||0)).slice(0,5);const total=top5.reduce((a,c)=>a+c.tvl,0);
+        document.getElementById('s0')&&(document.getElementById('s0').textContent='$'+fmtK(total))}catch{}
+    }catch(e){this.data=DEMO.dex}
+  },
   renderRow(c,i){const sp=sparkPath(c.spark);const sc=c.d7>=0?'var(--green)':'var(--red)';const dc=c.dip>=75?'h':c.dip>=50?'m':'l';
-    return`<tr onclick="openModal('${i}')"><td><span class="star" onclick="event.stopPropagation();this.classList.toggle('on')">☆</span></td><td class="rnk">${i+1}</td><td><div class="ac"><div class="ac-logo" style="background:${c.bg}">${c.sym[0]}</div><div><div class="ac-n">${c.name}</div><div class="ac-s">${c.sym}</div></div></div></td><td><span class="bdg" style="background:${c.chainBg};color:${c.chainC}">${c.chain}</span></td><td class="mc">$${fmtK(c.tvl)}</td><td class="vo">$${fmtK(c.vol)}</td><td class="pr" style="color:var(--green)">${c.apy}%</td><td><span class="pc ${c.h24>=0?'up':'dn'}">${pctStr(c.h24)}</span></td><td><span class="pc ${c.d7>=0?'up':'dn'}">${pctStr(c.d7)}</span></td><td class="ai"><span class="dip ${dc}">${c.dip}</span></td><td class="ai"><span class="sig ${c.sigC}">▲ ${c.sig}</span></td><td><div class="spk"><svg viewBox="0 0 100 28"><path d="${sp}" fill="none" stroke="${sc}" stroke-width="1.5"/></svg></div></td></tr>`},
+    return`<tr onclick="openModal('${i}')"><td><span class="star" onclick="event.stopPropagation();this.classList.toggle('on')">☆</span></td><td class="rnk">${i+1}</td><td><div class="ac">${c.img?`<img src="${c.img}" style="width:24px;height:24px;border-radius:50%">`:`<div class="ac-logo" style="background:${c.bg}">${(c.sym||'?')[0]}</div>`}<div><div class="ac-n">${c.name}</div><div class="ac-s">${c.sym}</div></div></div></td><td><span class="bdg" style="background:${c.chainBg};color:${c.chainC}">${c.chain}</span></td><td class="mc">$${fmtK(c.tvl)}</td><td class="vo">$${fmtK(c.vol)}</td><td class="pr" style="color:var(--green)">${c.apy}%</td><td><span class="pc ${c.h24>=0?'up':'dn'}">${pctStr(c.h24)}</span></td><td><span class="pc ${c.d7>=0?'up':'dn'}">${pctStr(c.d7)}</span></td><td class="ai"><span class="dip ${dc}">${c.dip}</span></td><td class="ai"><span class="sig ${c.sigC}">▲ ${c.sig}</span></td><td><div class="spk"><svg viewBox="0 0 100 28"><path d="${sp}" fill="none" stroke="${sc}" stroke-width="1.5"/></svg></div></td></tr>`},
   sidebar(){return`<div class="ai-c"><div class="ai-c-i">🔗</div><div class="ai-c-t">DeFiScout AI</div><div class="ai-c-s">TVL analysis, yield farming, rug pull detection, whale swaps.</div>${langBtns()}<div class="ai-c-inp"><input class="ai-ph" data-aicat="dex" placeholder="${LANGS[currentLang].dexPh}" onkeydown="if(event.key==='Enter')handleAiQuery(this)"><button class="snd" onclick="handleAiQuery(this)">→</button></div></div>
     <div class="wg"><div class="wg-h"><div class="wg-t">⛓️ Chain TVL</div><span class="wg-b" style="background:var(--purpleL);color:var(--purple)">DefiLlama</span></div><div class="wg-bd">${[{n:'Ethereum',v:'$48.2B',p:58},{n:'Solana',v:'$11.8B',p:14},{n:'BSC',v:'$7.4B',p:9},{n:'Arbitrum',v:'$5.8B',p:7},{n:'Base',v:'$3.2B',p:4}].map(e=>`<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:2px"><span style="font-weight:600">${e.n}</span><span style="font-family:var(--mono);font-size:10px">${e.v} (${e.p}%)</span></div><div class="mi-bar"><div class="mi-bar-fill" style="width:${e.p}%;background:var(--purple)"></div></div></div>`).join('')}</div></div>
     <div class="wg"><div class="wg-h"><div class="wg-t">🆕 New Launches</div></div><div class="wg-bd">${[{n:'$AXIOM',v:'+840%',c:'up'},{n:'$LUNAR',v:'+320%',c:'up'},{n:'$ORBIT',v:'+215%',c:'up'},{n:'$FLUX',v:'-42%',c:'dn'}].map((e,i)=>`<div class="sw-row"><span class="sw-r">${i+1}</span><div style="flex:1"><div class="sw-n">${e.n}</div></div><span class="sw-p ${e.c}">${e.v}</span></div>`).join('')}</div></div>`}
@@ -772,8 +805,25 @@ const MODULES={crypto:MOD_CRYPTO,cex:MOD_CEX,dex:MOD_DEX,stocks:MOD_STOCKS,byf:M
 const META={bitcoin:{bg:'#f7931a',tv:'BINANCE:BTCUSDT'},ethereum:{bg:'#627eea',tv:'BINANCE:ETHUSDT'},tether:{bg:'#26a17b'},ripple:{bg:'#23292f',tv:'BINANCE:XRPUSDT'},binancecoin:{bg:'#f3ba2f',tv:'BINANCE:BNBUSDT'},solana:{bg:'#9945ff',tv:'BINANCE:SOLUSDT'},cardano:{bg:'#0033ad',tv:'BINANCE:ADAUSDT'},dogecoin:{bg:'#c2a633',tv:'BINANCE:DOGEUSDT'},sui:{bg:'#6fbcf0',tv:'BINANCE:SUIUSDT'},chainlink:{bg:'#2a5ada',tv:'BINANCE:LINKUSDT'},avalanche:{bg:'#e84142',tv:'BINANCE:AVAXUSDT'},pepe:{bg:'#479f53',tv:'BINANCE:PEPEUSDT'},polkadot:{bg:'#e6007a',tv:'BINANCE:DOTUSDT'},'shiba-inu':{bg:'#fda32b',tv:'BINANCE:SHIBUSDT'},litecoin:{bg:'#345d9d',tv:'BINANCE:LTCUSDT'}};
 const mkSpark=(base,vol=0.03,len=20)=>Array.from({length:len},(_,i)=>base*(1+Math.sin(i*0.3)*vol+(Math.random()-0.5)*vol*0.5));
 
-function dipScore(c){let s=50;const h24=c.h24||c.chg||0,d7=c.d7||0,vol=c.vol||0,mc=c.mcap||c.tvl||c.aum||1;if(h24<-3)s+=Math.min(Math.abs(h24)*4,30);if(d7<-5)s+=Math.min(Math.abs(d7)*1.5,15);s+=Math.min((vol/mc)*100,50)*0.3;return Math.min(Math.round(s),99)}
-function aiSig(dip,chg){if(dip>=75&&chg<-2)return{t:'BUY',p:dip,c:'buy'};if(dip>=55)return{t:'BUY',p:Math.round(55+rand(0,dip-55)),c:'buy'};if(chg>10)return{t:'SELL',p:Math.round(60+rand(0,25)),c:'sell'};return{t:'HOLD',p:Math.round(40+rand(0,20)),c:'hold'}}
+function dipScore(c){
+  let s=0;const h1=c.h1||0,h24=c.h24||c.chg||0,d7=c.d7||0,vol=c.vol||0,mc=c.mcap||c.tvl||c.aum||1;
+  if(h24<-10)s+=25;else if(h24<-5)s+=18;else if(h24<-3)s+=12;else if(h24<0)s+=5;
+  if(d7<-20&&h24>0)s+=20;else if(d7<-10&&h1>0)s+=15;else if(d7<-5)s+=8;
+  const vr=mc>0?(vol/mc)*100:0;if(vr>15)s+=20;else if(vr>8)s+=14;else if(vr>3)s+=8;
+  if(h24<-5&&h1>1)s+=15;else if(h24<-3&&h1>0.5)s+=10;else if(h1>2)s+=5;
+  if(mc<1e8&&vr>5)s+=10;else if(mc<1e9&&vr>3)s+=7;else if(mc>5e10)s+=3;
+  return Math.min(Math.round(s+15),99);
+}
+function aiSig(dip,chg,item){
+  const h1=item?.h1||0,d7=item?.d7||0,vol=item?.vol||0,mc=item?.mcap||item?.tvl||1;
+  if(dip>=75&&chg<-3)return{t:'STRONG BUY',p:Math.min(dip+5,99),c:'buy'};
+  if(dip>=70&&d7<-15&&h1>0)return{t:'STRONG BUY',p:Math.round(75+rand(0,15)),c:'buy'};
+  if(dip>=55&&chg<-2)return{t:'BUY',p:Math.round(55+rand(0,dip-55)),c:'buy'};
+  if(d7<-10&&h1>1)return{t:'BUY',p:Math.round(55+rand(0,15)),c:'buy'};
+  if(chg>15&&dip<30)return{t:'SELL',p:Math.round(65+rand(0,25)),c:'sell'};
+  if(chg>20)return{t:'SELL',p:Math.round(60+rand(0,20)),c:'sell'};
+  return{t:'HOLD',p:Math.round(35+rand(0,25)),c:'hold'};
+}
 
 const DEMO={
   crypto:[
@@ -894,10 +944,49 @@ function setLang(lang){currentLang=lang;document.querySelectorAll('.lb').forEach
   document.querySelectorAll('.ai-c-t-dyn').forEach(el=>el.textContent=LANGS[lang].ask)}
 function handleAiQuery(btn){
   const box=btn.closest('.ai-c');const inp=box.querySelector('input');const q=inp.value.trim();if(!q)return;
-  let resp=box.querySelector('.ai-c-resp');if(!resp){resp=document.createElement('div');resp.className='ai-c-resp';box.appendChild(resp)}
-  const agentName=box.querySelector('.ai-c-t')?.textContent||'AI';const L=LANGS[currentLang];
-  resp.style.display='block';resp.innerHTML=`⏳ ${L.analyzing}...`;inp.value='';
-  setTimeout(()=>{resp.innerHTML='🤖 '+L.reply(q,agentName)},800)}
+  let resp=box.querySelector('.ai-c-resp');if(!resp){resp=document.createElement('div');resp.className='ai-c-resp';resp.style.cssText='margin-top:10px;padding:12px;background:var(--bg2);border:1px solid var(--bdr);border-radius:12px;font-size:11px;line-height:1.7';box.appendChild(resp)}
+  const L=LANGS[currentLang];const mod=MODULES[activeCat];const data=mod?.data||[];
+  resp.style.display='block';resp.innerHTML=`<div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border:2px solid var(--blue);border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite"></div>${L.analyzing}...</div>`;inp.value='';
+  setTimeout(()=>{
+    const ql=q.toLowerCase();const match=data.find(c=>(c.name||'').toLowerCase().includes(ql)||(c.sym||'').toLowerCase().includes(ql));
+    let a='';
+    if(activeCat==='crypto'){
+      if(match){const c=match;const vr=c.mcap>0?((c.vol/c.mcap)*100).toFixed(1):0;
+        a=`<b>🤖 CryptoSense — ${c.name} (${c.sym})</b><br>💰 $${fmtP(c.price)} (${pctStr(c.h24)} 24h, ${pctStr(c.d7)} 7d)<br>📊 DIP SCORE™: <span class="dip ${c.dip>=75?'h':c.dip>=50?'m':'l'}">${c.dip}/100</span> | Signal: <span class="sig ${c.sigC}">${c.sig} ${c.sigP||''}%</span><br><br>` +
+          `${c.h24<-5?'📉 <b>Sharp decline</b> — ':''}${c.h1>0&&c.h24<0?'🔄 <b>Reversal signal:</b> hourly recovering while daily down<br>':''}` +
+          `Vol/MCap: ${vr}% ${vr>10?'🔥 Extreme — whale activity likely':'— Normal'}<br>` +
+          `${c.dip>=70?'🟢 <b>Strong dip zone.</b> Historically good for DCA entry.':c.dip>=50?'🟡 <b>Moderate opportunity.</b> Wait for confirmation.':'⚪ No strong signal. Patience.'}`}
+      else{const top=data.sort((a,b)=>b.dip-a.dip).slice(0,3);const gain=data.sort((a,b)=>b.h24-a.h24).slice(0,3);
+        a=`<b>🤖 CryptoSense — Market Scan</b><br>🎯 Top DIP: ${top.map(c=>c.sym+' ('+c.dip+')').join(', ')}<br>📈 Gainers: ${gain.map(c=>c.sym+' '+pctStr(c.h24)).join(', ')}<br>${top[0]?.dip>=70?'💡 '+top[0].sym+' in strong dip zone — worth watching':'💡 No extreme dips right now'}`}
+    } else if(activeCat==='cex'){
+      const tv=data.reduce((s,e)=>s+(e.vol||0),0);const bp=data.filter(e=>e.btcPrice>0);
+      const spread=bp.length>1?Math.max(...bp.map(e=>e.btcPrice))-Math.min(...bp.map(e=>e.btcPrice)):0;
+      a=`<b>⚡ ExchangeRadar — CEX Scan</b><br>📊 Total Volume: $${fmtK(tv)}<br>🏆 Top: ${data.slice(0,3).map(e=>e.name+' $'+fmtK(e.vol)).join(' | ')}<br>` +
+        `💰 Funding: ${data[0]?.funding>=0?'+':''}${data[0]?.funding||0}% ${data[0]?.funding>0.05?'⚠️ High — long squeeze risk':'✅ Normal'}<br>` +
+        `🔍 BTC Spread: $${spread.toFixed(0)} ${spread>50?'— Arbitrage opportunity!':'— Tight'}`
+    } else if(activeCat==='dex'){
+      const topT=data.sort((a,b)=>(b.tvl||0)-(a.tvl||0)).slice(0,3);const topA=data.filter(c=>+c.apy>0).sort((a,b)=>+b.apy-+a.apy).slice(0,3);
+      a=`<b>🔗 DeFiScout — DeFi Scan</b><br>🔒 Top TVL: ${topT.map(c=>c.name+' $'+fmtK(c.tvl)).join(' | ')}<br>` +
+        `💰 Best APY: ${topA.map(c=>c.name+' '+c.apy+'% ('+c.chain+')').join(' | ')}<br>` +
+        `${topA[0]&&+topA[0].apy>100?'⚠️ High APY — check rug risk!':'✅ Yields look sustainable'}`
+    } else if(activeCat==='stocks'){
+      const g=data.sort((a,b)=>(b.chg||0)-(a.chg||0)).slice(0,3);const bist=data.filter(c=>c.exchange==='BIST');
+      a=`<b>📊 EquityPulse — Stock Scan</b><br>📈 Movers: ${g.map(c=>c.sym+' '+pctStr(c.chg)).join(' | ')}<br>` +
+        `🏛️ BIST: ${bist.slice(0,3).map(c=>c.sym+' ₺'+fmtP(c.price)+' '+pctStr(c.chg)).join(' | ')}`
+    } else if(activeCat==='byf'){
+      const fl=data.reduce((s,e)=>s+(e.flow||0),0);const ce=data.filter(c=>c.cat==='Crypto');
+      a=`<b>🧩 FundTracker — ETF Scan</b><br>💰 Net Flow: ${fl>=0?'+':''}$${fl}M<br>` +
+        `₿ BTC ETFs: ${ce.map(c=>c.sym+' '+(c.flow>=0?'+':'')+' $'+c.flow+'M').join(' | ')}<br>` +
+        `${fl>200?'🟢 Strong inflows — bullish':fl>0?'🟡 Moderate inflows':'🔴 Outflows — caution'}`
+    } else if(activeCat==='bonds'){
+      const us2=data.find(c=>c.sym==='US2Y'),us10=data.find(c=>c.sym==='US10Y');const inv=us2&&us10&&us2.yield>us10.yield;
+      a=`<b>🏦 YieldSentinel — Bond Scan</b><br>📐 Curve: ${inv?'⚠️ INVERTED (2Y '+us2.yield+'% > 10Y '+us10.yield+'%)':'✅ Normal'}<br>` +
+        `🌍 10Y: ${data.filter(c=>c.maturity==='10Y').slice(0,4).map(c=>c.country+' '+c.yield+'%').join(' | ')}<br>` +
+        `${inv?'💡 Inverted curve = recession signal. Favor short duration.':'💡 Normal curve. Balanced exposure OK.'}`
+    } else a='🤖 '+L.reply(q,mod?.agent||'AI');
+    resp.innerHTML=a;
+  },1200)
+}
 function langBtns(){return`<div class="ai-c-lang">${Object.keys(LANGS).map(l=>`<span class="lb${l===currentLang?' on':''}" data-lang="${l}" onclick="setLang('${l}')">${l}</span>`).join('')}</div>`}
 
 async function switchCategory(cat){
@@ -1124,6 +1213,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();docume
    FILE: js/init.js — Bootstrap
    ═══════════════════════════════════════════════════════ */
 switchCategory('crypto');
+setInterval(()=>switchCategory(activeCat),30000);
 setInterval(()=>{document.querySelectorAll('.pr').forEach(el=>{el.style.transition='opacity .1s';el.style.opacity='.5';setTimeout(()=>el.style.opacity='1',100)})},8000);
 </script>
 </body>
